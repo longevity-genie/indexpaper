@@ -1,0 +1,23 @@
+name: indexpaper
+channels:
+  - conda-forge
+  - bioconda
+  - pytorch
+  - plotly
+  - defaults
+dependencies:
+  - python=3.10
+  - setuptools
+  - pytorch
+  - jupyterlab #for examples only
+  - pip:
+      - pycomfort>=0.0.13
+      - pynction
+      - click
+      - twine
+      - tiktoken
+      - openai
+      - chromadb
+      - langchain
+      - qdrant-client
+      - llama-cpp-python
