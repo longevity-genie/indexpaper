@@ -28,11 +28,25 @@ def load_tokenizer_model_data(model: str, dataset: str):
     return tokenizer, model, df
 
 
-def compute_embeddings_time(tokenizer: PreTrainedTokenizerBase, model, input_texts: list[str]):
+def compute_embeddings_time(model_name: str, input_texts: list[str], cuda: bool = True):
+    import torch
+
+    if cuda and torch.cuda.is_available():
+        device = torch.device('cuda')
+    else:
+        print(f"trying to use cuda but it is not available!")
+        device = torch.device('cpu')
+
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModel.from_pretrained(model_name)
+    model.to(device)  # Move the model to the chosen device (GPU if cuda=True and available, otherwise CPU)
+
     start_time = time.perf_counter()  # Start the timer
 
     # Tokenize the input texts
     batch_dict = tokenizer(input_texts, max_length=512, padding=True, truncation=True, return_tensors='pt')
+    # Move the batch to the chosen device
+    batch_dict = {key: val.to(device) for key, val in batch_dict.items()}
 
     outputs = model(**batch_dict)
     embeddings = average_pool(outputs.last_hidden_state, batch_dict['attention_mask'])
@@ -40,5 +54,5 @@ def compute_embeddings_time(tokenizer: PreTrainedTokenizerBase, model, input_tex
     end_time = time.perf_counter()  # End the timer
 
     execution_time = end_time - start_time  # Calculate the execution time
+    return embeddings, execution_time
 
-    return execution_time
