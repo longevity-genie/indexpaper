@@ -23,7 +23,7 @@ setup(
     packages=find_packages(),
     install_requires=['pyfunctional', 'more-itertools', 'click', 'python-dotenv', 'tiktoken',
                       'langchain', 'openai', 'Deprecated', 'loguru',
-                      'qdrant-client', 'chromadb', 'sentence_transformers', 'datasets'],
+                      'qdrant-client', 'chromadb', 'sentence_transformers', 'datasets', 'polars'],
     keywords=['python', 'utils', 'files', 'papers', 'download', 'index', 'vector databases'],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",

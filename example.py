@@ -36,13 +36,15 @@ def preload(model: str, dataset: str, log_level: str):
 @app.command("measure")
 @click.option('--model', default='intfloat/multilingual-e5-large', help='model to load')
 @click.option('--dataset', default='longevity-genie/tacutu_papers', help='dataset to load')
+@click.option("--cuda", type=click.BOOL, default=False, help="should use CUDA")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def measure(model: str, dataset: str, log_level: str):
+def measure(model: str, dataset: str, cuda: bool, log_level: str):
     configure_logger(log_level, False)
     tokenizer, embedding_model, df = load_tokenizer_model_data(model, dataset)
+    updated_model = embedding_model.to("cuda") if cuda else embedding_model
     papers = df.select(pl.col("content_text")).to_series().to_list()
     logger.info(f"computing embedding time for {len(papers)} papers")
-    timing = compute_embeddings_time(tokenizer, embedding_model, papers)
+    timing = compute_embeddings_time(tokenizer, updated_model, papers)
     logger.info(f"the time was {timing} seconds")
     return timing
 
