@@ -23,7 +23,7 @@ import time
 
 
 @app.command("preload")
-@click.option('--model', default='intfloat/multilingual-e5-large', help='model to load') #"thenlper/gte-large" #"menadsa/S-BioELECTRA"
+@click.option('--model', default='thenlper/gte-large', help='model to load') #"intfloat/multilingual-e5-large" #"menadsa/S-BioELECTRA"
 @click.option('--dataset', default='longevity-genie/tacutu_papers', help='dataset to load')
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
 def preload(model: str, dataset: str, log_level: str):
@@ -34,7 +34,7 @@ def preload(model: str, dataset: str, log_level: str):
 
 
 @app.command("measure")
-@click.option('--model', default='intfloat/multilingual-e5-large', help='model to load')
+@click.option('--model', default='thenlper/gte-large', help='model to load')
 @click.option('--dataset', default='longevity-genie/tacutu_papers', help='dataset to load')
 @click.option("--cuda", type=click.BOOL, default=True, help="should use CUDA")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
