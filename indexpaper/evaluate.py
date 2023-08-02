@@ -2,9 +2,11 @@ import time
 from datasets import load_dataset
 from transformers import AutoTokenizer, PreTrainedTokenizerBase, AutoModel
 import polars as pl
+import torch
 import torch.nn.functional as F
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
+import time
 
 def get_dataset(name: str) -> pl.DataFrame:
     """
@@ -28,6 +30,15 @@ def load_tokenizer_model_data(model: str, dataset: str):
     return tokenizer, model, df
 
 
+from transformers import AutoTokenizer, AutoModel
+import time
+
+def average_pool(hidden_state, attention_mask):
+    # Assuming you want to perform mean pooling over the non-padding part of the sequence
+    sum_hidden_state = torch.sum(hidden_state * attention_mask.unsqueeze(-1), dim=1)
+    count_hidden_state = torch.sum(attention_mask, dim=1).unsqueeze(-1)
+    return sum_hidden_state / count_hidden_state
+
 def compute_embeddings_time(model_name: str, input_texts: list[str], cuda: bool = True):
     import torch
 
@@ -39,20 +50,28 @@ def compute_embeddings_time(model_name: str, input_texts: list[str], cuda: bool 
 
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     model = AutoModel.from_pretrained(model_name)
-    model.to(device)  # Move the model to the chosen device (GPU if cuda=True and available, otherwise CPU)
+    model.to(device)
 
-    start_time = time.perf_counter()  # Start the timer
+    total_execution_time = 0
+    embeddings_list = []
 
-    # Tokenize the input texts
-    batch_dict = tokenizer(input_texts, max_length=512, padding=True, truncation=True, return_tensors='pt')
-    # Move the batch to the chosen device
-    batch_dict = {key: val.to(device) for key, val in batch_dict.items()}
+    for text in input_texts:
+        start_time = time.perf_counter()
 
-    outputs = model(**batch_dict)
-    embeddings = average_pool(outputs.last_hidden_state, batch_dict['attention_mask'])
+        # Tokenize the input text
+        batch_dict = tokenizer([text], max_length=512, padding=True, truncation=True, return_tensors='pt')
+        batch_dict = {key: val.to(device) for key, val in batch_dict.items()}
 
-    end_time = time.perf_counter()  # End the timer
+        outputs = model(**batch_dict)
+        embeddings = average_pool(outputs.last_hidden_state, batch_dict['attention_mask'])
 
-    execution_time = end_time - start_time  # Calculate the execution time
-    return embeddings, execution_time
+        end_time = time.perf_counter()
+        execution_time = end_time - start_time
+
+        print(f"Execution time for text: {execution_time:.4f} seconds")
+        total_execution_time += execution_time
+        embeddings_list.append(embeddings)
+
+    print(f"Total execution time: {total_execution_time:.4f} seconds")
+    return torch.cat(embeddings_list, dim=0), total_execution_time
 
