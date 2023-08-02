@@ -39,7 +39,20 @@ Note: there are temporal issues with embeddings for llama.
 
 # Examples
 
-You can run examples.py to see usage examples
+You can run examples.py to see usage examples and also to evaluate embeddings.
+
+For example if you want to evaluate how fast embeddings compute on Robi Tacutu papers you can run:
+```
+python example.py preload
+```
+to download dataset and model. And then:
+```bash
+python example.py evaluate --model intfloat/multilingual-e5-large --dataset longevity-genie/tacutu_papers
+```
+To measure time
+```bash
+python examp.e.py measure --model intfloat/multilingual-e5-large --dataset longevity-genie/tacutu_papers
+```
 
 # Additional requirements
 

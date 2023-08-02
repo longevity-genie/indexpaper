@@ -313,14 +313,6 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
                                  model=model,
                                  prefer_grpc=prefer_grpc
                                  )
-def get_dataset(name: str) -> pl.DataFrame:
-    """
-    for example "longevity-genie/moskalev_papers"
-    :param name:
-    :return: polars Dataframe
-    """
-    dataset = load_dataset(name)["train"]
-    return pl.from_arrow(dataset.data.table)
 
 
 if __name__ == '__main__':
