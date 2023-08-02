@@ -8,7 +8,8 @@ from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from loguru import logger
 from pycomfort.files import *
-
+from transformers import AutoTokenizer
+from transformers import PreTrainedTokenizerBase
 
 def flatten_dict(d: Dict[str, Union[str, int, float, Dict, List]], parent_key: str = '', sep: str = '_', list_sep: Optional[str] = ", ") -> Dict[str, Union[str, int, float]]:
     """
@@ -99,6 +100,8 @@ class SourceTextSplitter(RecursiveCharacterTextSplitter, ABC):
         for i, text in enumerate(texts):
             meta = _metadatas[i]
             source: Optional[str] = meta["source"] if "source" in meta else None
+            if meta["paragraph"] is not None:
+                source = source + "#paragraph_" + meta["paragraph"]
             for j, chunk in enumerate(self.split_text(text)):
                 new_meta = deepcopy(meta)
                 if source is not None:
@@ -112,12 +115,35 @@ class SourceTextSplitter(RecursiveCharacterTextSplitter, ABC):
                 documents.append(new_doc)
         return documents
 
+class HuggingFaceSplitter(SourceTextSplitter, ABC):
+
+    tokenizer: PreTrainedTokenizerBase
+
+    def __init__(self,
+                 model: str = "sentence-transformers/all-mpnet-base-v2", #"thenlper/gte-large"
+                 tokens: int = 512, #based on benchmarks
+                 tokens_overlap: int = 0,
+                 keep_separator: bool = False,
+                 add_start_index: bool = False
+                 ):
+
+        self.tokenizer = AutoTokenizer.from_pretrained(model)
+
+        def length_function(text: str) -> int:
+            return len(self.tokenizer.encode(text))
+
+        super().__init__(chunk_size=tokens, chunk_overlap=tokens_overlap,
+                         length_function=length_function,
+                         keep_separator=keep_separator,
+                         add_start_index=add_start_index)
+
+
 
 class OpenAISplitter(SourceTextSplitter, ABC):
 
-    def __init__(self, tokens: int = 2000,
+    def __init__(self, model: str = "gpt-3.5-turbo-16k",
+                 tokens: int = 2000,
                  tokens_overlap: int = 0,
-                 model: str = "gpt-3.5-turbo-16k",
                  keep_separator: bool = False,
                  add_start_index: bool = False
                  ):

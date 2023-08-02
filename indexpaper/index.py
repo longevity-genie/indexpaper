@@ -5,6 +5,7 @@ from pathlib import Path
 
 import click
 from click import Context
+from datasets import load_dataset
 from langchain.embeddings import OpenAIEmbeddings, LlamaCppEmbeddings, VertexAIEmbeddings
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
@@ -13,8 +14,9 @@ from langchain.vectorstores import Chroma, VectorStore, Qdrant
 from loguru import logger
 from pycomfort.files import *
 from qdrant_client import QdrantClient
+import polars as pl
 
-from indexpaper.config import load_environment_keys, LOG_LEVELS, LogLevel, configure_logger
+from pycomfort.config import load_environment_keys, LOG_LEVELS, LogLevel, configure_logger
 from indexpaper.splitting import OpenAISplitter, SourceTextSplitter, papers_to_documents
 
 class VectorDatabase(Enum):
@@ -22,6 +24,13 @@ class VectorDatabase(Enum):
     Qdrant = "Qdrant"
 
 
+class EmbeddingType(Enum):
+    OpenAI = "openai"
+    Llama = "llama"
+    VertexAI = "vertexai"
+    HuggingFace = "huggingface"
+
+EMBEDDINGS: list[str] = [e.value for e in EmbeddingType]
 VECTOR_DATABASES: list[str] = [db.value for db in VectorDatabase]
 
 
@@ -237,7 +246,7 @@ def index_selected_papers(papers_folder: Path,
 @click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
 @click.option('--splitter_name', type=click.Choice(["openai", "recursive"]), default="openai", help='which splitter to choose for the text splitting')
 @click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk for splitting (characters for recursive spliiter and tokens for openai one)')
-@click.option('--embeddings', type=click.Choice(["openai", "llama", "vertexai"]), default="openai",
+@click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.OpenAI.value,
               help='size of the chunk for splitting')
 @click.option("--model", type=click.Path(), default=None, help="path to the model (required for embeddings)")
 @click.option('--include_meta', type=click.BOOL, default=True, help="if metadata is included")
@@ -266,6 +275,52 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
                                  model=model,
                                  prefer_grpc=prefer_grpc
                                  )
+
+@app.command("index_papers")
+@click.option('--papers', type=click.Path(exists=True), help="papers folder to index")
+@click.option('--collection', default='papers', help='papers collection name')
+@click.option('--folder', type=click.Path(), default=None, help="folder to put chroma indexes to")
+@click.option('--url', type=click.STRING, default=None, help="alternatively you can provide url, for example http://localhost:6333 for qdrant")
+@click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
+@click.option('--splitter_name', type=click.Choice(["openai", "recursive"]), default="openai", help='which splitter to choose for the text splitting')
+@click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk for splitting (characters for recursive spliiter and tokens for openai one)')
+@click.option('--embeddings', type=click.Choice(["openai", "llama", "vertexai", "hugging"]), default="openai",
+              help='size of the chunk for splitting')
+@click.option("--model", type=click.Path(), default=None, help="path to the model (required for embeddings)")
+@click.option('--include_meta', type=click.BOOL, default=True, help="if metadata is included")
+@click.option('--database', type=click.Choice(VECTOR_DATABASES, case_sensitive=False), default=VectorDatabase.Chroma.value, help = "which store to take")
+@click.option('--prefer_grpc', type=click.BOOL, default = None)
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
+def index_papers_command(papers: str, collection: str, folder: str, url: str, key: str, splitter_name: str, chunk_size: int, embeddings: str, model: Optional[str], include_meta: bool, database: str, prefer_grpc: Optional[bool], log_level: str) -> Path:
+    configure_logger(log_level)
+    load_environment_keys(usecwd=True)
+    papers_folder = Path(papers)
+    assert not (folder is None and url is None and key is None), "either database folder or database url or api_key should be provided!"
+    if splitter_name == "openai":
+        # Create a RecursiveSplitterWithSource to split the documents into chunks of the specified size
+        splitter = SourceTextSplitter(chunk_size=chunk_size)
+    elif splitter_name == "recursive":
+        splitter = OpenAISplitter(tokens=chunk_size)
+    else:
+        logger.warning(f"{splitter_name} is not supported, using openai tiktoken based splitter instead")
+        splitter = OpenAISplitter(tokens=chunk_size)
+    if embeddings == "llama" and model is None:
+        model = os.getenv("LLAMA_MODEL")
+
+    return index_selected_papers(papers_folder, collection, splitter, embeddings, include_meta, folder, url,
+                                 database=VectorDatabase[database],
+                                 key=key,
+                                 model=model,
+                                 prefer_grpc=prefer_grpc
+                                 )
+def get_dataset(name: str) -> pl.DataFrame:
+    """
+    for example "longevity-genie/moskalev_papers"
+    :param name:
+    :return: polars Dataframe
+    """
+    dataset = load_dataset(name)["train"]
+    return pl.from_arrow(dataset.data.table)
 
 
 if __name__ == '__main__':

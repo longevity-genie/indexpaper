@@ -9,6 +9,7 @@ dependencies:
   - python=3.10
   - setuptools
   - pytorch
+  - jupyter #for intellij jupyter only
   - jupyterlab #for examples only
   - pip:
       - pycomfort>=0.0.13
@@ -20,4 +21,5 @@ dependencies:
       - chromadb
       - langchain
       - qdrant-client
-      - llama-cpp-python
+      - sentence_transformers
+      - datasets

@@ -21,9 +21,9 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=['pyfunctional', 'more-itertools', 'click', 'python-dotenv', 'tiktoken', 'pynction',
+    install_requires=['pyfunctional', 'more-itertools', 'click', 'python-dotenv', 'tiktoken',
                       'langchain', 'openai', 'Deprecated', 'loguru',
-                      'qdrant-client', 'chromadb', 'llama-cpp-python'],
+                      'qdrant-client', 'chromadb', 'sentence_transformers', 'datasets'],
     keywords=['python', 'utils', 'files', 'papers', 'download', 'index', 'vector databases'],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
