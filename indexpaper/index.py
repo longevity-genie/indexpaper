@@ -23,6 +23,30 @@ import polars as pl
 from pycomfort.config import load_environment_keys, LOG_LEVELS, LogLevel, configure_logger
 from indexpaper.splitting import OpenAISplitter, SourceTextSplitter, papers_to_documents, HuggingFaceSplitter
 
+class Device(Enum):
+    cpu = "cpu"
+    cuda = "cuda"
+    ipu = "ipu"
+    xpu = "xpu"
+    mkldnn = "mkldnn"
+    opengl = "opengl"
+    opencl = "opencl"
+    ideep = "ideep"
+    hip = "hip"
+    ve = "ve"
+    fpga = "fpga"
+    ort = "ort"
+    xla = "xla"
+    lazy = "lazy"
+    vulkan = "vulkan"
+    mps = "mps"
+    meta = "meta"
+    hpu = "hpu"
+    mtia = "mtia"
+    privateuseone = "privateuseone"
+DEVICES =  [d.value for d in Device]
+
+
 class VectorDatabase(Enum):
     Chroma = "Chroma"
     Qdrant = "Qdrant"
@@ -53,7 +77,7 @@ def resolve_splitter(embeddings_type: EmbeddingType, model: Optional[Union[Path,
         logger.warning(f"{embeddings_type} splitter is not supported, using openai tiktoken based splitter instead")
         return OpenAISplitter(tokens=chunk_size)
 
-def resolve_embeddings(embeddings_type: EmbeddingType, model: Optional[Union[Path, str]] = None, device: Optional[str] = None) -> Embeddings:
+def resolve_embeddings(embeddings_type: EmbeddingType, model: Optional[Union[Path, str]] = None, device: Device = Device.cpu) -> Embeddings:
     if embeddings_type == EmbeddingType.OpenAI:
         return OpenAIEmbeddings()
     elif embeddings_type == EmbeddingType.Llama:
@@ -69,15 +93,9 @@ def resolve_embeddings(embeddings_type: EmbeddingType, model: Optional[Union[Pat
     elif embeddings_type == EmbeddingType.HuggingFace:
         if model is None:
             logger.warning(f"for huggingface the model name should be specified")
-            if device is not None:
-                return HuggingFaceEmbeddings(model_kwargs={'device': device})
-            else:
-                return HuggingFaceEmbeddings()
+            return HuggingFaceEmbeddings(model_kwargs={'device': device.value})
         else:
-            if device is not None:
-                return HuggingFaceEmbeddings(model_name = str(model), model_kwargs={'device': device})
-            else:
-                return HuggingFaceEmbeddings(model_name = str(model))
+            return HuggingFaceEmbeddings(model_name = str(model), model_kwargs={'device': device.value})
     else:
         logger.warning(f"{embeddings_type.value} is not yet supported by CLI, using default openai embeddings instead")
         return OpenAIEmbeddings()
@@ -244,7 +262,7 @@ def index_selected_papers(folder_or_texts: Union[Path, list[str]],
                           database: VectorDatabase = VectorDatabase.Chroma.value,
                           model: Optional[Union[Path, str]] = None,
                           prefer_grpc: Optional[bool] = None,
-                          device: Optional[str] = None
+                          device: Device = Device.cpu
                           ) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
     openai_key = load_environment_keys() #for openai key
     embeddings_function = resolve_embeddings(embedding_type, model, device)
@@ -277,7 +295,7 @@ def index_selected_papers(folder_or_texts: Union[Path, list[str]],
 @click.option("--model", type=click.Path(), default=None, help="path to the model (required for embeddings)")
 @click.option('--include_meta', type=click.BOOL, default=True, help="if metadata is included")
 @click.option('--database', type=click.Choice(VECTOR_DATABASES, case_sensitive=False), default=VectorDatabase.Chroma.value, help = "which store to take")
-@click.option("--device", type=click.STRING, default=None, help="device to use")
+@click.option("--device", type=click.Choice(DEVICES), default=Device.cpu.value, help="which device to use, cpu by default, so do not forget to put cuda if you are using NVIDIA")
 @click.option('--prefer_grpc', type=click.BOOL, default = None)
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
 def index_papers_command(papers: str, collection: str, folder: str, url: str, key: str, embeddings: str, chunk_size: int, model: Optional[str], include_meta: bool, database: str, device: Optional[str], prefer_grpc: Optional[bool], log_level: str) -> Path:
@@ -292,7 +310,7 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
                                  key=key,
                                  model=model,
                                  prefer_grpc=prefer_grpc,
-                                 device=device
+                                 device=Device(device)
                                  )
 
 
