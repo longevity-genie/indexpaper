@@ -44,9 +44,9 @@ def preload(model: str, dataset: str, log_level: str):
 @click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.HuggingFace.value,
               help='size of the chunk for splitting')
 @click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk for splitting (characters for recursive spliiter and tokens for openai one)')
-@click.option("--cuda", type=click.BOOL, default=True, help="should use CUDA")
+@click.option("--device", type=click.STRING, default=None, help="which device to use")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def measure(model: str, dataset: str, embeddings: str, chunk_size: int, cuda: bool, log_level: str):
+def measure(model: str, dataset: str, embeddings: str, chunk_size: int, device: Optional[str], log_level: str):
     configure_logger(log_level, False)
     df = get_dataset(dataset)
     papers = df.select(pl.col("content_text")).to_series().to_list()
@@ -58,7 +58,7 @@ def measure(model: str, dataset: str, embeddings: str, chunk_size: int, cuda: bo
                                                       splitter,
                                                       embedding_type,
                                                       database=VectorDatabase.Chroma,
-                                                      model=model)
+                                                      model=model, device=device)
     logger.info(f"the time was {timing} seconds")
     return timing
 
