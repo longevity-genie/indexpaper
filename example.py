@@ -12,7 +12,9 @@ from indexpaper.evaluate import *
 from loguru import logger
 
 from indexpaper.evaluate import *
-from indexpaper.index import resolve_splitter, EMBEDDINGS, EmbeddingType, index_selected_papers, VectorDatabase
+from indexpaper.index import resolve_splitter, EMBEDDINGS, EmbeddingType, index_selected_papers, VectorDatabase, \
+    process_paper_dataset, DEVICES, Device
+from indexpaper.splitting import SourceTextSplitter
 
 
 @click.group(invoke_without_command=False)
@@ -38,28 +40,23 @@ def preload(model: str, dataset: str, log_level: str):
     logger.info(f"preloaded {model} model and {dataset} dataset")
 
 
+
+
 @app.command("measure")
 @click.option('--model', default='thenlper/gte-large', help='model to load')
 @click.option('--dataset', default='longevity-genie/tacutu_papers', help='dataset to load')
 @click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.HuggingFace.value,
               help='size of the chunk for splitting')
 @click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk for splitting (characters for recursive spliiter and tokens for openai one)')
-@click.option("--device", type=click.STRING, default=None, help="which device to use")
+@click.option("--device", type=click.Choice(DEVICES), default=Device.cpu.value, help="which device to use, cpu by default, so do not forget to put cuda if you are using NVIDIA")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
 def measure(model: str, dataset: str, embeddings: str, chunk_size: int, device: Optional[str], log_level: str):
     configure_logger(log_level, False)
-    df = get_dataset(dataset)
-    papers = df.select(pl.col("content_text")).to_series().to_list()
-    logger.info(f"computing embedding time for {len(papers)} papers")
     embedding_type = EmbeddingType(embeddings)
-    splitter = resolve_splitter(embedding_type, model, chunk_size)
-    embeddings, where, timing = index_selected_papers(papers,
-                                                      dataset.replace("/", "_"),
-                                                      splitter,
-                                                      embedding_type,
-                                                      database=VectorDatabase.Chroma,
-                                                      model=model, device=device)
-    logger.info(f"the time was {timing} seconds")
+    embeddings, where, timing = process_paper_dataset(dataset, dataset.replace("/", "_"),
+                                                      embedding_type = embedding_type,
+                                                      model=model,
+                                                      chunk_size=chunk_size, device=Device(device))
     return timing
 
 

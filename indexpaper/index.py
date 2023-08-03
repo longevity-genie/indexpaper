@@ -21,6 +21,8 @@ from qdrant_client import QdrantClient
 import polars as pl
 
 from pycomfort.config import load_environment_keys, LOG_LEVELS, LogLevel, configure_logger
+
+from indexpaper.evaluate import get_dataset
 from indexpaper.splitting import OpenAISplitter, SourceTextSplitter, papers_to_documents, HuggingFaceSplitter
 
 class Device(Enum):
@@ -59,6 +61,16 @@ class EmbeddingType(Enum):
 
 EMBEDDINGS: list[str] = [e.value for e in EmbeddingType]
 VECTOR_DATABASES: list[str] = [db.value for db in VectorDatabase]
+
+def get_dataset(name: str) -> pl.LazyFrame:
+    """
+    for example "longevity-genie/moskalev_papers"
+    :param name:
+    :return: polars Dataframe
+    """
+    dataset = load_dataset(name)["train"]
+    return pl.from_arrow(dataset.data.table).lazy()
+
 
 def resolve_splitter(embeddings_type: EmbeddingType, model: Optional[Union[Path, str]] = None, chunk_size: Optional[int] = None) -> SourceTextSplitter:
     if embeddings_type == EmbeddingType.OpenAI:
@@ -171,7 +183,8 @@ def write_remote_db(url: str,
     if database == VectorDatabase.Qdrant:
         logger.info(f"writing a collection {collection_name} of {len(documents)} documents to quadrant db at {url}")
         start_time = time.perf_counter()
-        db = init_qdrant(collection_name, path_or_url=url, embedding_function=embeddings, api_key=key, prefer_grpc=prefer_grpc)
+        api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
+        db = init_qdrant(collection_name, path_or_url=url, embedding_function=embeddings, api_key=api_key, prefer_grpc=prefer_grpc)
         db_updated = db_with_documents(db, documents, splitter,  id_field)
         end_time = time.perf_counter()
         execution_time: float = end_time - start_time
@@ -249,8 +262,40 @@ def texts_to_documents(texts: list[str]) -> list[Document]:
         metadata={"text": text}
     ) for text in texts]
 
+def format_time(seconds: float) -> str:
+    hours = int(seconds // 3600)
+    seconds %= 3600
+    minutes = int(seconds // 60)
+    seconds = int(seconds % 60)
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
 
-#@beartype
+@beartype()
+def process_paper_dataset(dataset: Union[pl.LazyFrame, str, Path],
+                          collection: str,
+                          embedding_type: EmbeddingType,
+                          model: str,
+                          chunk_size: int = 512,
+                          device: Device = Device.cpu)-> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
+    if isinstance(dataset, pl.LazyFrame):
+        df: pl.LazyFrame = dataset
+    elif isinstance(dataset, Path) or ".parquet" in dataset:
+        df: pl.LazyFrame = pl.scan_parquet(dataset)
+    else:
+        df: pl.LazyFrame = get_dataset(dataset)
+    papers = df.select(pl.col("content_text")).collect().to_series().to_list()
+    splitter: SourceTextSplitter = resolve_splitter(embedding_type, model, chunk_size)
+    logger.info(f"computing embedding time for {collection} with {len(papers)} papers")
+    db, where, timing = index_selected_papers(papers,
+                                                  collection,
+                                                  splitter,
+                                                  embedding_type,
+                                                  database=VectorDatabase.Chroma,
+                                                  model=model, device=device)
+    logger.info(f"embeddings of {len(papers)} took {format_time(timing)}")
+
+    return db, where, timing
+
+@beartype
 def index_selected_papers(folder_or_texts: Union[Path, list[str]],
                           collection: str,
                           splitter: SourceTextSplitter,
@@ -268,7 +313,7 @@ def index_selected_papers(folder_or_texts: Union[Path, list[str]],
     embeddings_function = resolve_embeddings(embedding_type, model, device)
     logger.info(f"embeddings are {embedding_type}")
     documents = papers_to_documents(folder_or_texts, include_meta=include_meta) if isinstance(folder_or_texts, Path) else texts_to_documents(folder_or_texts)
-    if url is not None:
+    if url is not None or key is not None:
         return write_remote_db(url, collection, documents, splitter, embeddings=embeddings_function, database=database, key=key, prefer_grpc = prefer_grpc)
     else:
         if folder is None:
