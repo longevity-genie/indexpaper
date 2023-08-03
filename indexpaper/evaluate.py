@@ -1,12 +1,11 @@
 import time
-from datasets import load_dataset
-from transformers import AutoTokenizer, PreTrainedTokenizerBase, AutoModel
+
 import polars as pl
 import torch
-import torch.nn.functional as F
+from datasets import load_dataset
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
-import time
+
 
 def get_dataset(name: str) -> pl.DataFrame:
     """
@@ -23,21 +22,12 @@ def average_pool(last_hidden_states: Tensor,
     return last_hidden.sum(dim=1) / attention_mask.sum(dim=1)[..., None]
 
 
-def load_tokenizer_model_data(model: str, dataset: str):
-    tokenizer: PreTrainedTokenizerBase = AutoTokenizer.from_pretrained(model)
-    model = AutoModel.from_pretrained(model)
-    df = get_dataset(dataset)
-    return tokenizer, model, df
-
-
-from transformers import AutoTokenizer, AutoModel
-import time
-
 def average_pool(hidden_state, attention_mask):
     # Assuming you want to perform mean pooling over the non-padding part of the sequence
     sum_hidden_state = torch.sum(hidden_state * attention_mask.unsqueeze(-1), dim=1)
     count_hidden_state = torch.sum(attention_mask, dim=1).unsqueeze(-1)
     return sum_hidden_state / count_hidden_state
+
 
 def compute_embeddings_time(model_name: str, input_texts: list[str], cuda: bool = True):
     import torch

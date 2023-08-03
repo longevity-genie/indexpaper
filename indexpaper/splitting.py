@@ -100,7 +100,7 @@ class SourceTextSplitter(RecursiveCharacterTextSplitter, ABC):
         for i, text in enumerate(texts):
             meta = _metadatas[i]
             source: Optional[str] = meta["source"] if "source" in meta else None
-            if meta["paragraph"] is not None:
+            if "paragraph" in meta and meta["paragraph"] is not None:
                 source = source + "#paragraph_" + meta["paragraph"]
             for j, chunk in enumerate(self.split_text(text)):
                 new_meta = deepcopy(meta)
