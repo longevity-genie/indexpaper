@@ -12,8 +12,7 @@ from indexpaper.evaluate import *
 from loguru import logger
 
 from indexpaper.evaluate import *
-from indexpaper.index import resolve_splitter, EMBEDDINGS, EmbeddingType, index_selected_papers, VectorDatabase, \
-    process_paper_dataset, DEVICES, Device
+from indexpaper.index import resolve_splitter, EMBEDDINGS, EmbeddingType, index_selected_papers, VectorDatabase,  DEVICES, Device
 from indexpaper.splitting import SourceTextSplitter
 
 
