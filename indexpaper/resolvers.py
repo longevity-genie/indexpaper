@@ -8,6 +8,17 @@ from pycomfort.files import *
 
 from indexpaper.splitting import OpenAISplitter, SourceTextSplitter, HuggingFaceSplitter
 
+class EmbeddingModels(Enum):
+    all_mpnet_base: str = "sentence-transformers/all-mpnet-base-v2"
+    bge_base_en: str = "BAAI/bge-base-en" #so far second best at https://huggingface.co/spaces/mteb/leaderboard
+    gte_large: str = "thenlper/gte-large"
+    gte_base: str = "thenlper/gte-base"
+    multilingual_e5_large: str = "intfloat/multilingual-e5-large" #supports many languages and pretty good
+    biobert: str = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
+    biolord: str = 'FremyCompany/BioLORD-STAMB2-v1' #based on all-mpnet-base-v2 finetined for bio domain
+    bioelectra: str = 'menadsa/S-BioELECTRA'
+    default: str = bge_base_en
+
 
 class Device(Enum):
     cpu = "cpu"
@@ -103,3 +114,6 @@ def resolve_embeddings(embeddings_type: EmbeddingType, model: Optional[Union[Pat
     else:
         logger.warning(f"{embeddings_type.value} is not yet supported by CLI, using default openai embeddings instead")
         return OpenAIEmbeddings()
+
+def resolve_embedding_splitter(embeddings_type: EmbeddingType, model: Optional[Union[Path, str]] = None, device: Device = Device.cpu, chunk_size=512):
+    return resolve_embeddings(embeddings_type, model, device), resolve_splitter(embeddings_type, model, chunk_size=chunk_size)

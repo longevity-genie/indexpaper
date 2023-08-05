@@ -4,6 +4,7 @@ from click import Context
 from pycomfort.config import load_environment_keys, LOG_LEVELS, LogLevel, configure_logger
 
 from indexpaper.indexing import index_selected_papers, index_selected_documents
+from indexpaper.paperset import Paperset
 from indexpaper.resolvers import *
 from indexpaper.utils import timing
 
@@ -78,6 +79,29 @@ def index_dataset_command(dataset: str, collection: str, folder: str, url: str, 
                                  prefer_grpc=prefer_grpc,
                                  device=Device(device)
                                  )
+
+    @timing
+    @beartype
+    def process_paperset(dataset: Union[pl.LazyFrame, str, Path],
+                         collection: str,
+                         embedding_type: EmbeddingType,
+                         model: str,
+                         chunk_size: int = 512,
+                         device: Device = Device.cpu) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
+        splitter: SourceTextSplitter = resolve_splitter(embedding_type, model, chunk_size)
+        paperset = Paperset(dataset, splitter=splitter)
+        from indexing import write_remote_db
+        write_remote_db()
+        db, where, timing = index_selected_papers(papers,
+                                                  collection,
+                                                  splitter,
+                                                  embedding_type,
+                                                  database=VectorDatabase.Chroma,
+                                                  model=model, device=device)
+        #logger.info(f"embeddings of {len(papers)} took {format_time(timing)}")
+
+        return db, where, timing
+
 
 
 if __name__ == '__main__':

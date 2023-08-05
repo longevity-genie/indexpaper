@@ -21,7 +21,7 @@ def timing(custom_message:Optional[str] = None):
             result = func(*args, **kwargs)  # Call the original function
             end_time = time.perf_counter()
             execution_time = end_time - start_time
-            message = f"{custom_message} {func.__name__} took {format_time(execution_time)}"
+            message = f"{custom_message if custom_message is not None else ''} {func.__name__} took {format_time(execution_time)}"
             logger.debug(message)
             return result
         return wrapper

@@ -1,101 +1,156 @@
 #!/usr/bin/env python3
-from typing import Any, TypeVar
+from typing import TypeVar
 
-import langchain
 import polars as pl
 from beartype import beartype
 from datasets import load_dataset
+from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
-from langchain.vectorstores import VectorStore
-from loguru import logger
-from pycomfort.files import *
 
-from indexpaper.index import index_selected_papers
 from indexpaper.resolvers import *
 
 T = TypeVar('T')
 
-def get_dataset(name: str) -> pl.LazyFrame:
-    """
-    for example "longevity-genie/moskalev_papers"
-    :param name:
-    :return: polars Dataframe
-    """
-    dataset = load_dataset(name)["train"]
-    return pl.from_arrow(dataset.data.table).lazy()
+DEFAULT_COLUMNS = ('corpusid',
+                  'content_source_oainfo_openaccessurl',
+                  'updated',
+                  'externalids_doi',
+                  'externalids_pubmed',
+                  'annotations_abstract',
+                  'annotations_author',
+                  'annotations_title',
+                   'annotations_paragraph',
+                   #'content_text'
+                   )
 
-def documents_from_dataset_slice(df: pl.DataFrame, splitter: TextSplitter,  paragraphs: str):
-    pass
+class Paperset:
 
-
-def fold_left_slices(df: pl.LazyFrame, n: int, fold: Callable[[T, pl.DataFrame], T], acc: T, start: int = 0) -> T:
-    """
-    Function that simulates fold_left on slices of lazy dataframe
-    :param df:
-    :param n:
-    :param fold:
-    :param acc:
-    :param start:
-    :return:
-    """
-    # Get the slice
-    slice_lazy_df = df.slice(start, n)
-
-    # Collect the slice to a DataFrame to check if it has zero rows
-    slice_df = slice_lazy_df.collect()
-    if slice_df.shape[0] == 0:
-        return acc
-
-    # Apply the function to the slice (in place modification)
-    upd_acc = fold(acc, slice_df)
-
-    # Recursive call to process the next slice
-    return fold_left_slices(df, n, fold, upd_acc, start + n)
+    lazy_frame: pl.LazyFrame
+    content_field: str = 'annotations_paragraph'
+    splitter: Optional[TextSplitter] = None
+    columns: list[str]
 
 
+    @staticmethod
+    def get_dataset(name: str, default_columns: Optional[list|tuple] = DEFAULT_COLUMNS) -> pl.LazyFrame:
+        """
+        for example "longevity-genie/moskalev_papers"
+        :param name:
+        :return: polars Dataframe
+        """
+        dataset = load_dataset(name)["train"]
+        df = pl.from_arrow(dataset.data.table).lazy()
+        return df if default_columns is None else df.select(default_columns)
 
-def foreach_slice(df: pl.LazyFrame, n: int, fun: Callable[[pl.DataFrame], None], start: int = 0) -> None:
-    # Get the slice
-    slice_lazy_df = df.slice(start, n)
+    @beartype
+    def __init__(self, df_name_or_path: Union[pl.LazyFrame, str, Path],
+                 splitter: Optional[TextSplitter] = None,
+                 content_field: str = 'annotations_paragraph',
+                 default_columns=DEFAULT_COLUMNS, low_memory: bool = False):
+        self.splitter = splitter
+        if isinstance(df_name_or_path, pl.LazyFrame):
+            self.lazy_frame = df_name_or_path if default_columns is None else df_name_or_path.select(default_columns)
+        elif isinstance(df_name_or_path, Path) or "parquet" in df_name_or_path:
+            df = pl.scan_parquet(df_name_or_path, low_memory=low_memory)
+            self.lazy_frame = df if default_columns is None else df.select(default_columns)
+        else:
+            self.lazy_frame = Paperset.get_dataset(df_name_or_path, default_columns)
+        self.content_field = content_field
+        self.columns = self.lazy_frame.columns
+        assert content_field in self.columns, f"{content_field} has not been found in dataframe columns {self.columns}"
 
-    # Collect the slice to a DataFrame to check if it has zero rows
-    slice_df = slice_lazy_df.collect()
-    if slice_df.shape[0] == 0:
-        return
+    @beartype
+    def split_documents(self, documents: list[Document])-> list[Document]:
+        """
+        splits documents of splitter is present
+        :param documents:
+        :return:
+        """
+        return documents if self.splitter is None else self.splitter.split_documents(documents)
 
-    # Apply the function to the slice (in place modification)
-    fun(slice_df)
+    @beartype
+    def row_to_documents(self, row: tuple):
+        """
+        Converts dataframe row into the text for indexing
+        :param row:
+        :param columns:
+        :param content_field:
+        :param splitter:
+        :return:
+        """
+        d: dict = dict(zip(self.columns, row))
+        data = d[self.content_field]
+        contents = data if type(data) is list else [data]
+        meta = {k:v for k,v in d.items() if k != self.content_field}
+        if "externalids_doi" in meta and "doi" not in meta:
+            meta["doi"] = meta["externalids_doi"]
+        def with_index(meta: dict, i):
+            meta["paragraph"] = i
+            meta["source"] = meta["doi"] + "#" + i
+        docs: list[Document] = [Document(page_content = c, metadata=with_index(meta, i)) for (c, i) in seq(contents).zip_with_index(1)]
+        return self.split_documents(docs)
 
-    # Recursive call to process the next slice
-    foreach_slice(df, n, fun, start + n)
+    @beartype
+    def documents_from_dataset_slice(self, df: pl.DataFrame) -> list[Document]:
+        return seq(self.row_to_documents(r) for r in df.iter_rows()).flatten().to_list()
 
 
+    def fold_left_slices(self, n: int, fold: Callable[[T, pl.DataFrame], T], acc: T, start: int = 0) -> T:
+        """
+        Function that simulates fold_left on slices of lazy dataframe
+        :param df:
+        :param n:
+        :param fold:
+        :param acc:
+        :param start:
+        :return:
+        """
+        # Get the slice
+        slice_lazy_df = self.lazy_frame.slice(start, n)
+
+        # Collect the slice to a DataFrame to check if it has zero rows
+        slice_df = slice_lazy_df.collect()
+        if slice_df.shape[0] == 0:
+            return acc
+
+        # Apply the function to the slice (in place modification)
+        upd_acc = fold(acc, slice_df)
+
+        # Recursive call to process the next slice
+        return self.fold_left_slices(n, fold, upd_acc, start + n)
+
+    def fold_left_document_slices(self, n: int, fold: Callable[[T, list[Document]], T], acc: T, start: int = 0) -> T:
+        """
+        Wrapper to apply it to the documents
+        :param n:
+        :param fold:
+        :param acc:
+        :param start:
+        :return:
+        """
+        def fold_df(value: T, df: pl.DataFrame) -> T:
+            return fold(value, self.documents_from_dataset_slice(df))
+        return self.fold_left_slices(n, fold_df, acc, start)
 
 
+    def foreach_slice(self, n: int, fun: Callable[[pl.DataFrame], None], start: int = 0) -> None:
+        # Get the slice
+        slice_lazy_df = self.lazy_frame.slice(start, n)
 
-@beartype
-def process_paper_dataset(dataset: Union[pl.LazyFrame, str, Path],
-                          collection: str,
-                          embedding_type: EmbeddingType,
-                          model: str,
-                          chunk_size: int = 512,
-                          device: Device = Device.cpu)-> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
-    if isinstance(dataset, pl.LazyFrame):
-        df: pl.LazyFrame = dataset
-    elif isinstance(dataset, Path) or ".parquet" in dataset:
-        df: pl.LazyFrame = pl.scan_parquet(dataset)
-    else:
-        df: pl.LazyFrame = get_dataset(dataset)
-    papers = df.select(pl.col("content_text")).collect().to_series().to_list()
-    splitter: SourceTextSplitter = resolve_splitter(embedding_type, model, chunk_size)
-    logger.info(f"computing embedding time for {collection} with {len(papers)} papers")
-    db, where, timing = index_selected_papers(papers,
-                                              collection,
-                                              splitter,
-                                              embedding_type,
-                                              database=VectorDatabase.Chroma,
-                                              model=model, device=device)
-    logger.info(f"embeddings of {len(papers)} took {format_time(timing)}")
+        # Collect the slice to a DataFrame to check if it has zero rows
+        slice_df = slice_lazy_df.collect()
+        if slice_df.shape[0] == 0:
+            return
 
-    return db, where, timing
+        # Apply the function to the slice (in place modification)
+        fun(slice_df)
+
+        # Recursive call to process the next slice
+        self.foreach_slice(n, fun, start + n)
+
+    @beartype
+    def foreach_document_slice(self, n: int, fun: Callable[[list[Document]], None], start: int = 0) -> None:
+        def fun_df(df: pl.DataFrame) -> None:
+            return fun(self.documents_from_dataset_slice(df))
+        return self.foreach_slice(n, fun_df, start)
 

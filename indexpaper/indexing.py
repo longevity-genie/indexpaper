@@ -6,18 +6,15 @@ import click
 import langchain
 from beartype import beartype
 from click import Context
-from langchain.embeddings import OpenAIEmbeddings
-from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
 from langchain.vectorstores import Chroma, VectorStore, Qdrant
-from loguru import logger
 from pycomfort.config import load_environment_keys
-from pycomfort.files import *
 from qdrant_client import QdrantClient
 
 from indexpaper.resolvers import *
 from indexpaper.splitting import SourceTextSplitter, papers_to_documents
+from indexpaper.utils import timing
 
 
 def db_with_texts(db: VectorStore, texts: list[str],
@@ -170,7 +167,7 @@ def texts_to_documents(texts: list[str]) -> list[Document]:
         metadata={"text": text}
     ) for text in texts]
 
-@time("indexing selected")
+@timing("indexing selected")
 def index_selected_documents(documents: list[Document],
                           collection: str,
                           splitter: SourceTextSplitter,
