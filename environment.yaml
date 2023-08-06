@@ -15,6 +15,7 @@ dependencies:
       - pycomfort>=0.0.13
       - pynction
       - polars>=0.18.11
+      - beartype
       - click
       - twine
       - tiktoken
