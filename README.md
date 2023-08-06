@@ -54,6 +54,21 @@ To measure time
 python example.py measure --model intfloat/multilingual-e5-large --dataset longevity-genie/tacutu_papers
 ```
 
+# indexing a dataset
+
+To index a dataset you can use either index.py dataset subcomment or you look how to do it in code in papers.ipynb example notebook
+For example, if we want to index "longevity-genie/tacutu_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "gpu" as device and with 10 papers in a slice.
+And we want to write it to the local version of qdrant located at http://localhost:6333 (see services for docker-compose file):
+```bash
+python indexpaper/index.py dataset --collection biolinkbert_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --url http://localhost:6333 --model michiyasunaga/BioLinkBERT-large --slice 10 --device gpu
+```
+
+Another example. If we want to index "longevity-genie/moskalev_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "gpu" as device and with 10 papers in a slice.
+And we want to use our Qdrant cloud key (fill in QDRANT_KEY or put it to environment variable)
+```bash
+python indexpaper/index.py dataset --collection biolinkbert_512_moskalev_papers --dataset "longevity-genie/moskalev_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 10 --device gpu
+```
+
 # Additional requirements
 
 index.py has local dependencies on other modules, for this reason if you are running it inside indexpaper project folder consider having it installed locally:

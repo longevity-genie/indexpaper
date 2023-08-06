@@ -15,9 +15,11 @@ class EmbeddingModels(Enum):
     gte_base: str = "thenlper/gte-base"
     multilingual_e5_large: str = "intfloat/multilingual-e5-large" #supports many languages and pretty good
     biobert: str = 'pritamdeka/BioBERT-mnli-snli-scinli-scitail-mednli-stsb'
+    pubmedbert: str = 'pritamdeka/S-PubMedBert-MS-MARCO'
     biolord: str = 'FremyCompany/BioLORD-STAMB2-v1' #based on all-mpnet-base-v2 finetined for bio domain
     bioelectra: str = 'menadsa/S-BioELECTRA'
-    default: str = bge_base_en
+    biolinkbert: str = "michiyasunaga/BioLinkBERT-large" #best on https://microsoft.github.io/BLURB/leaderboard.html
+    default: str = biolinkbert
 
 
 class Device(Enum):

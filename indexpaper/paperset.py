@@ -9,6 +9,7 @@ from langchain.text_splitter import TextSplitter
 from langchain.vectorstores import VectorStore
 
 from indexpaper.resolvers import *
+from indexpaper.utils import timing
 
 T = TypeVar('T')
 
@@ -20,14 +21,17 @@ DEFAULT_COLUMNS = ('corpusid',
                   'annotations_abstract',
                   'annotations_author',
                   'annotations_title',
-                   'annotations_paragraph',
-                   #'content_text'
+                  # 'annotations_paragraph',
+                   'content_text'
                    )
 
 class Paperset:
+    """
+    The class that makes it easier to work with dataset or papers for indexing, can be either hugging face or parquet
+    """
 
     lazy_frame: pl.LazyFrame
-    content_field: str = 'annotations_paragraph'
+    content_field: str #"content_text" #'annotations_paragraph'
     splitter: Optional[TextSplitter] = None
     columns: list[str]
 
@@ -46,7 +50,7 @@ class Paperset:
     @beartype
     def __init__(self, df_name_or_path: Union[pl.LazyFrame, str, Path],
                  splitter: Optional[TextSplitter] = None,
-                 content_field: str = 'annotations_paragraph',
+                 content_field: str = 'content_text',
                  default_columns=DEFAULT_COLUMNS, low_memory: bool = False):
         self.splitter = splitter
         if isinstance(df_name_or_path, pl.LazyFrame):
@@ -150,7 +154,7 @@ class Paperset:
         # Recursive call to process the next slice
         self.foreach_slice(n, fun, start + n)
 
-    @beartype
+    #@beartype
     def foreach_document_slice(self, n: int, fun: Callable[[list[Document]], None], start: int = 0) -> None:
         def fun_df(df: pl.DataFrame) -> None:
             return fun(self.documents_from_dataset_slice(df))
@@ -158,14 +162,11 @@ class Paperset:
 
     @beartype
     def index_by_slices(self, n: int, db: VectorStore, start: int = 0):
+        @timing(f"one more slice of {n} papers, starting from paper {start} has been indexed; ")
         def index_fun(docs: list[Document]) -> None:
             if len(docs) == 0:
-                logger.info(f"no more documents to index at {start}!")
+                logger.info(f"no more documents to index!")
                 return None
-            last = docs[-1]
-            last_source = f" with last document having {last.metadata['doi']}" if "doi" in last.metadata else ""
             db.add_documents(docs)
-            logger.info(f"indexed {start} + {n} * {len(docs)} documents" + last_source)
-            return None
         return self.foreach_document_slice(n, index_fun)
 

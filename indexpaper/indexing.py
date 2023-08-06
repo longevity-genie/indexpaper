@@ -49,10 +49,10 @@ def db_with_documents(db: VectorStore, documents: list[Document],
     db.add_texts(texts=texts, metadatas=metadatas, ids=ids)
     return db
 
-
+@beartype
 def init_qdrant(collection_name: str,
                 path_or_url: Optional[str],
-                embedding_function: Optional[Embeddings],
+                embeddings: Optional[Embeddings],
                 api_key: Optional[str] = None,
                 distance_func: str = "Cosine",
                 prefer_grpc: bool = False):
@@ -81,7 +81,7 @@ def init_qdrant(collection_name: str,
     from qdrant_client.http import models as rest
     #client.recreate_collection(collection_name)
     # Just do a single quick embedding to get vector size
-    partial_embeddings = embedding_function.embed_documents("probe")
+    partial_embeddings = embeddings.embed_documents("probe")
     vector_size = len(partial_embeddings[0])
     print(vector_size)
     distance_func = distance_func.upper()
@@ -92,7 +92,7 @@ def init_qdrant(collection_name: str,
             distance=rest.Distance[distance_func],
         )
     )
-    return Qdrant(client, collection_name=collection_name, embeddings=embedding_function)
+    return Qdrant(client, collection_name=collection_name, embeddings=embeddings)
 
 
 def write_remote_db(url: str,
@@ -107,7 +107,7 @@ def write_remote_db(url: str,
         logger.info(f"writing a collection {collection_name} of {len(documents)} documents to quadrant db at {url}")
         start_time = time.perf_counter()
         api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
-        db = init_qdrant(collection_name, path_or_url=url, embedding_function=embeddings, api_key=api_key, prefer_grpc=prefer_grpc)
+        db = init_qdrant(collection_name, path_or_url=url, embeddings=embeddings, api_key=api_key, prefer_grpc=prefer_grpc)
         db_updated = db_with_documents(db, documents, splitter,  id_field)
         end_time = time.perf_counter()
         execution_time: float = end_time - start_time
