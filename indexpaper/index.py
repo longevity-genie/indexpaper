@@ -58,7 +58,7 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
 @click.option('--chunk_size', type=click.INT, default=512, help='size of the chunk for splitting (characters for recursive spliter and tokens for openai one)')
 @click.option("--model", type=click.Path(), default=EmbeddingModels.default, help="path to the model (required for embeddings)")
 @click.option("--device", type=click.Choice(DEVICES), default=Device.cpu.value, help="which device to use, cpu by default, so do not forget to put cuda if you are using NVIDIA")
-@click.option('--prefer_grpc', type=click.BOOL, default = True, help = "only needed for qdrant database")
+@click.option('--prefer_grpc', type=click.BOOL, default=False, help = "only needed for qdrant database")
 @click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
 @click.option('--start', type=click.INT, default=0, help='When to start slicing the dataset')
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
