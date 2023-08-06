@@ -69,6 +69,16 @@ And we want to use our Qdrant cloud key (fill in QDRANT_KEY or put it to environ
 python indexpaper/index.py dataset --collection biolinkbert_512_moskalev_papers --dataset "longevity-genie/moskalev_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 10 --device gpu
 ```
 
+# Runnning local Qdrant
+
+We provide docker-compose configuration to run local qdrant (you can also use qdrant cloud instead).
+To run local qdrant install dockerr compose and run:
+```bash
+cd services
+docker compose up
+```
+Then you should be able to see  http://localhost:6333/dashboard
+
 # Additional requirements
 
 index.py has local dependencies on other modules, for this reason if you are running it inside indexpaper project folder consider having it installed locally:

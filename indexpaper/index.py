@@ -51,7 +51,7 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
 @app.command("dataset")
 @click.option('--dataset', type=click.STRING, help="Dataset to index, can be either Path or hugging face dataset")
 @click.option('--collection', default='dataset', help='dataset collection name')
-@click.option('--url', type=click.STRING, required=True, help="URL or API key for example http://localhost:6333 for qdrant")
+@click.option('--url', type=click.STRING, default=None, help="URL or API key for example http://localhost:6333 for qdrant")
 @click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
 @click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.HuggingFace.value,
               help='embeddings type, huggingface by default')
@@ -62,7 +62,7 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
 @click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
 @click.option('--start', type=click.INT, default=0, help='When to start slicing the dataset')
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def index_dataset_command(dataset: str, collection: str, url: str, key: str, embeddings: str, chunk_size: int, model: Optional[str], device: Optional[str], prefer_grpc: bool, slice: int, start: int, log_level: str) -> Path:
+def index_dataset_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], embeddings: str, chunk_size: int, model: Optional[str], device: Optional[str], prefer_grpc: bool, slice: int, start: int, log_level: str) -> Path:
     configure_logger(log_level)
     load_environment_keys(usecwd=True)
     assert not (url is None and key is None), "either database url or api_key should be provided!"

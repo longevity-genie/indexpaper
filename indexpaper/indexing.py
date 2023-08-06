@@ -83,7 +83,6 @@ def init_qdrant(collection_name: str,
     # Just do a single quick embedding to get vector size
     partial_embeddings = embeddings.embed_documents("probe")
     vector_size = len(partial_embeddings[0])
-    print(vector_size)
     distance_func = distance_func.upper()
     client.recreate_collection(
         collection_name=collection_name,
