@@ -6,6 +6,7 @@ from beartype import beartype
 from datasets import load_dataset
 from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
+from langchain.vectorstores import VectorStore
 
 from indexpaper.resolvers import *
 
@@ -86,7 +87,8 @@ class Paperset:
             meta["doi"] = meta["externalids_doi"]
         def with_index(meta: dict, i):
             meta["paragraph"] = i
-            meta["source"] = meta["doi"] + "#" + i
+            meta["source"] = meta["doi"] + "#" + str(i)
+            return meta
         docs: list[Document] = [Document(page_content = c, metadata=with_index(meta, i)) for (c, i) in seq(contents).zip_with_index(1)]
         return self.split_documents(docs)
 
@@ -153,4 +155,17 @@ class Paperset:
         def fun_df(df: pl.DataFrame) -> None:
             return fun(self.documents_from_dataset_slice(df))
         return self.foreach_slice(n, fun_df, start)
+
+    @beartype
+    def index_by_slices(self, n: int, db: VectorStore, start: int = 0):
+        def index_fun(docs: list[Document]) -> None:
+            if len(docs) == 0:
+                logger.info(f"no more documents to index at {start}!")
+                return None
+            last = docs[-1]
+            last_source = f" with last document having {last.metadata['doi']}" if "doi" in last.metadata else ""
+            db.add_documents(docs)
+            logger.info(f"indexed {start} + {n} * {len(docs)} documents" + last_source)
+            return None
+        return self.foreach_document_slice(n, index_fun)
 

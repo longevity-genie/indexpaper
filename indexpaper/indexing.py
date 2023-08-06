@@ -21,6 +21,7 @@ def db_with_texts(db: VectorStore, texts: list[str],
                   splitter: TextSplitter, id_field: Optional[str] = None, debug: bool = False):
     return db_with_documents(db, texts_to_documents(texts), splitter, id_field, debug)
 
+
 def db_with_documents(db: VectorStore, documents: list[Document],
                       splitter: TextSplitter,
                       id_field: Optional[str] = None, debug: bool = False):
@@ -48,7 +49,23 @@ def db_with_documents(db: VectorStore, documents: list[Document],
     db.add_texts(texts=texts, metadatas=metadatas, ids=ids)
     return db
 
-def init_qdrant(collection_name: str, path_or_url: str,  embedding_function: Optional[Embeddings], api_key: Optional[str] = None, distance_func: str = "Cosine", prefer_grpc: bool = False):
+
+def init_qdrant(collection_name: str,
+                path_or_url: Optional[str],
+                embedding_function: Optional[Embeddings],
+                api_key: Optional[str] = None,
+                distance_func: str = "Cosine",
+                prefer_grpc: bool = False):
+    """
+    Function that initializes QDrant
+    :param collection_name:
+    :param path_or_url:
+    :param embedding_function:
+    :param api_key:
+    :param distance_func:
+    :param prefer_grpc:
+    :return:
+    """
     is_url = "ttp:" in path_or_url or "ttps:" in path_or_url
     path: Optional[str] = None if is_url else path_or_url
     url: Optional[str] = path_or_url if is_url else None
@@ -66,6 +83,7 @@ def init_qdrant(collection_name: str, path_or_url: str,  embedding_function: Opt
     # Just do a single quick embedding to get vector size
     partial_embeddings = embedding_function.embed_documents("probe")
     vector_size = len(partial_embeddings[0])
+    print(vector_size)
     distance_func = distance_func.upper()
     client.recreate_collection(
         collection_name=collection_name,
