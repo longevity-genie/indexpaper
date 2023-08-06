@@ -51,7 +51,7 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
 @app.command("dataset")
 @click.option('--dataset', type=click.STRING, help="Dataset to index, can be either Path or hugging face dataset")
 @click.option('--collection', default='dataset', help='dataset collection name')
-@click.option('--url', type=click.STRING, default=None, help="URL or API key for example http://localhost:6333 for qdrant")
+@click.option('--url', type=click.STRING, required=True, help="URL or API key for example http://localhost:6333 for qdrant")
 @click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
 @click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.HuggingFace.value,
               help='embeddings type, huggingface by default')

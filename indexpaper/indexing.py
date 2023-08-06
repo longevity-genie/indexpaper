@@ -66,19 +66,15 @@ def init_qdrant(collection_name: str,
     :param prefer_grpc:
     :return:
     """
-    if path_or_url is None:
-        path = None
-        url = None
-    else:
-        is_url = "ttp:" in path_or_url or "ttps:" in path_or_url
-        path: Optional[str] = None if is_url else path_or_url
-        url: Optional[str] = path_or_url if is_url else None
+    is_url = "ttp:" in path_or_url or "ttps:" in path_or_url
+    path: Optional[str] = None if is_url else path_or_url
+    url: Optional[str] = path_or_url if is_url else None
     logger.info(f"initializing quadrant database at {path_or_url}")
     client: QdrantClient = QdrantClient(
         url=url,
         port=6333,
         grpc_port=6334,
-        prefer_grpc=prefer_grpc,
+        prefer_grpc=is_url if prefer_grpc is None else prefer_grpc,
         api_key=api_key,
         path=path
     )

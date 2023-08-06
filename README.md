@@ -68,9 +68,9 @@ And we want to use our Qdrant cloud key (fill in QDRANT_KEY or put it to environ
 ```bash
 python indexpaper/index.py dataset --collection biolinkbert_512_moskalev_papers --dataset "longevity-genie/moskalev_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 10 --chunk_size 512 --device gpu
 ```
-Another example. Robi Tacutu papers with cpu using QDRANT_KEY and biolord embeddings model:
+Another example. Robi Tacutu papers with cpu using QDRANT_KEY, cluster url (put yours) and biolord embeddings model:
 ```
-python indexpaper/index.py dataset --collection biolord_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model FremyCompany/BioLORD-STAMB2-v1 --slice 10 --chunk_size 512 --device cpu
+python indexpaper/index.py dataset --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io --collection biolord_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model FremyCompany/BioLORD-STAMB2-v1 --slice 10 --chunk_size 512 --device cpu
 ```
 
 # Runnning local Qdrant
