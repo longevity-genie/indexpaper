@@ -32,8 +32,9 @@ def app(ctx: Context):
 @click.option('--database', type=click.Choice(VECTOR_DATABASES, case_sensitive=False), default=VectorDatabase.Chroma.value, help = "which store to take")
 @click.option("--device", type=click.Choice(DEVICES), default=Device.cpu.value, help="which device to use, cpu by default, so do not forget to put cuda if you are using NVIDIA")
 @click.option('--prefer_grpc', type=click.BOOL, default = None)
+@click.option('--rewrite', type=click.BOOL, default=False, help = "Rewrite collection if it is already present")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def index_papers_command(papers: str, collection: str, folder: str, url: str, key: str, embeddings: str, chunk_size: int, model: Optional[str], include_meta: bool, database: str, device: Optional[str], prefer_grpc: Optional[bool], log_level: str) -> Path:
+def index_papers_command(papers: str, collection: str, folder: str, url: str, key: str, embeddings: str, chunk_size: int, model: Optional[str], include_meta: bool, database: str, device: Optional[str], prefer_grpc: Optional[bool], rewrite: bool, log_level: str) -> Path:
     configure_logger(log_level)
     load_environment_keys(usecwd=True)
     papers_folder = Path(papers)
@@ -45,7 +46,8 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
                                  key=key,
                                  model=model,
                                  prefer_grpc=prefer_grpc,
-                                 device=Device(device)
+                                 device=Device(device),
+                                 always_recreate=rewrite
                                  )
 @timing
 @app.command("dataset")
@@ -61,8 +63,9 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
 @click.option('--prefer_grpc', type=click.BOOL, default=False, help = "only needed for qdrant database")
 @click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
 @click.option('--start', type=click.INT, default=0, help='When to start slicing the dataset')
+@click.option('--rewrite', type=click.BOOL, default=False, help = "Rewrite collection if it is already present")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def index_dataset_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], embeddings: str, chunk_size: int, model: Optional[str], device: Optional[str], prefer_grpc: bool, slice: int, start: int, log_level: str) -> Path:
+def index_dataset_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], embeddings: str, chunk_size: int, model: Optional[str], device: Optional[str], prefer_grpc: bool, slice: int, start: int, rewrite: bool, log_level: str) -> Path:
     configure_logger(log_level)
     load_environment_keys(usecwd=True)
     assert not (url is None and key is None), "either database url or api_key should be provided!"
@@ -71,7 +74,8 @@ def index_dataset_command(dataset: str, collection: str, url: Optional[str], key
     embedding_function = resolve_embeddings(embedding_type, model = model, device = Device(device))
     splitter = resolve_splitter(embedding_type, model, chunk_size)
     paper_set = Paperset(dataset, splitter=splitter)
-    db = init_qdrant(collection, path_or_url=url, embeddings=embedding_function, prefer_grpc=prefer_grpc)
+    api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
+    db = init_qdrant(collection, path_or_url=url, embeddings=embedding_function, prefer_grpc=prefer_grpc, always_recreate = rewrite, api_key=api_key)
     return paper_set.index_by_slices(slice, db, start = start)
 
 

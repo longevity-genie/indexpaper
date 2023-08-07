@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 from typing import TypeVar
 
 import polars as pl
@@ -6,7 +7,7 @@ from beartype import beartype
 from datasets import load_dataset
 from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
-from langchain.vectorstores import VectorStore
+from langchain.vectorstores import VectorStore, Qdrant
 
 from indexpaper.resolvers import *
 from indexpaper.utils import timing
@@ -160,6 +161,17 @@ class Paperset:
             return fun(self.documents_from_dataset_slice(df))
         return self.foreach_slice(n, fun_df, start)
 
+
+    def generate_id_from_data(self, data):
+        """
+        function to avoid duplicates
+        :param data:
+        :return:
+        """
+        if isinstance(data, str):  # check if data is a string
+            data = data.encode('utf-8')  # encode the string into bytes
+        return str(hex(int.from_bytes(hashlib.sha256(data).digest()[:32], 'little')))[-32:]
+
     @beartype
     def index_by_slices(self, n: int, db: VectorStore, start: int = 0):
         @timing(f"one more slice of {n} papers, starting from paper {start} has been indexed; ")
@@ -167,6 +179,10 @@ class Paperset:
             if len(docs) == 0:
                 logger.info(f"no more documents to index!")
                 return None
-            db.add_documents(docs)
+            texts = [d.page_content for d in docs]
+            metadatas = [d.metadata for d in docs]
+            ids = [self.generate_id_from_data(d.page_content) for d in docs]
+            db.add_texts(texts=texts, metadatas=metadatas, ids=ids)
+
         return self.foreach_document_slice(n, index_fun)
 

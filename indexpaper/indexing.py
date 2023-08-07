@@ -53,9 +53,11 @@ def db_with_documents(db: VectorStore, documents: list[Document],
 def init_qdrant(collection_name: str,
                 path_or_url: Optional[str],
                 embeddings: Optional[Embeddings],
+                always_recreate: bool = True,
                 api_key: Optional[str] = None,
                 distance_func: str = "Cosine",
-                prefer_grpc: bool = False):
+                prefer_grpc: bool = False,
+                ):
     """
     Function that initializes QDrant
     :param collection_name:
@@ -84,13 +86,15 @@ def init_qdrant(collection_name: str,
     partial_embeddings = embeddings.embed_documents("probe")
     vector_size = len(partial_embeddings[0])
     distance_func = distance_func.upper()
-    client.recreate_collection(
-        collection_name=collection_name,
-        vectors_config=rest.VectorParams(
-            size=vector_size,
-            distance=rest.Distance[distance_func],
+    collections = client.get_collections()
+    if always_recreate or collection_name not in collections.collections:
+        client.recreate_collection(
+            collection_name=collection_name,
+            vectors_config=rest.VectorParams(
+                size=vector_size,
+                distance=rest.Distance[distance_func],
+            )
         )
-    )
     return Qdrant(client, collection_name=collection_name, embeddings=embeddings)
 
 
@@ -101,12 +105,14 @@ def write_remote_db(url: str,
                     id_field: Optional[str] = None,
                     embeddings: Optional[Embeddings] = None,
                     database: VectorDatabase = VectorDatabase.Qdrant,
-                    key: Optional[str] = None, prefer_grpc: Optional[bool] = False) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
+                    key: Optional[str] = None,
+                    prefer_grpc: Optional[bool] = False,
+                    always_recreate: bool = False) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
     if database == VectorDatabase.Qdrant:
         logger.info(f"writing a collection {collection_name} of {len(documents)} documents to quadrant db at {url}")
         start_time = time.perf_counter()
         api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
-        db = init_qdrant(collection_name, path_or_url=url, embeddings=embeddings, api_key=api_key, prefer_grpc=prefer_grpc)
+        db = init_qdrant(collection_name, path_or_url=url, embeddings=embeddings, api_key=api_key, prefer_grpc=prefer_grpc, always_recreate=always_recreate)
         db_updated = db_with_documents(db, documents, splitter,  id_field)
         end_time = time.perf_counter()
         execution_time: float = end_time - start_time
@@ -123,7 +129,8 @@ def make_local_db(collection_name: str,
                   database: VectorDatabase = VectorDatabase.Chroma,
                   persist_directory: Optional[Path] = None,
                   id_field: Optional[str] = None,
-                  prefer_grpc: Optional[bool] = False
+                  prefer_grpc: Optional[bool] = False,
+                  always_recreate: bool = False
                   ) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
     """
     :param collection_name:
@@ -153,7 +160,7 @@ def make_local_db(collection_name: str,
 
     # Create a Chroma database with the specified collection name and embeddings, and save it in the specified directory
     if database == VectorDatabase.Qdrant:
-        db = init_qdrant(collection_name, where_str, embedding_function=embeddings,  prefer_grpc = prefer_grpc)
+        db = init_qdrant(collection_name, where_str, embedding_function=embeddings,  prefer_grpc = prefer_grpc, always_recreate = always_recreate)
     else:
         db = Chroma(collection_name=collection_name, persist_directory=persist_directory, embedding_function=embeddings)
     db_updated = db_with_documents(db, documents, splitter,  id_field)
@@ -214,6 +221,7 @@ def index_selected_papers(folder_or_texts: Union[Path, list[str]],
                           database: VectorDatabase = VectorDatabase.Chroma.value,
                           model: Optional[Union[Path, str]] = None,
                           prefer_grpc: Optional[bool] = None,
+                          always_recreate: bool = False,
                           device: Device = Device.cpu
                           ) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
     openai_key = load_environment_keys() #for openai key
@@ -221,15 +229,15 @@ def index_selected_papers(folder_or_texts: Union[Path, list[str]],
     logger.info(f"embeddings are {embedding_type}")
     documents = papers_to_documents(folder_or_texts, include_meta=include_meta) if isinstance(folder_or_texts, Path) else texts_to_documents(folder_or_texts)
     if url is not None or key is not None:
-        return write_remote_db(url, collection, documents, splitter, embeddings=embeddings_function, database=database, key=key, prefer_grpc = prefer_grpc)
+        return write_remote_db(url, collection, documents, splitter, embeddings=embeddings_function, database=database, key=key, prefer_grpc = prefer_grpc, always_recreate = always_recreate)
     else:
         if folder is None:
             logger.warning(f"neither url not folder are set, trying in memory")
-            return make_local_db(collection, documents, splitter, embeddings_function, prefer_grpc = prefer_grpc, database=database)
+            return make_local_db(collection, documents, splitter, embeddings_function, prefer_grpc = prefer_grpc, database=database, always_recreate = always_recreate)
         else:
             index = Path(folder) if isinstance(folder, str) else folder
             index.mkdir(exist_ok=True)
             where = index / f"{embedding_type.value}_{splitter.chunk_size}_chunk"
             where.mkdir(exist_ok=True, parents=True)
             logger.info(f"writing index of papers to {where}")
-            return make_local_db(collection, documents, splitter, embeddings_function, persist_directory=where,  prefer_grpc = prefer_grpc, database=database)
+            return make_local_db(collection, documents, splitter, embeddings_function, persist_directory=where,  prefer_grpc = prefer_grpc, database=database, always_recreate = always_recreate)
