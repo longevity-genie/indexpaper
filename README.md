@@ -1,10 +1,71 @@
 # indexpaper
+
 The project devoted to indexing papers in vector databases
 
 It was originally part of getpaper but now has not dependencies on it
 
-We provide features to index the papers with openai or llama embeddings and save them in chromadb vector store.
+We provide features to index the papers as well as semantic-scholar paper datasets with openai, huggingface or llama embeddings and save them either chromadb or qdrant vector store.
+
 For openai embeddings to work you have to create .env file and specify your openai key there, see .env.template as example
+
+# getting started
+
+Install the library with:
+```bash
+pip install getpaper
+```
+
+On linux systems you sometimes need to check that build--essential are installed:
+```bash
+sudo apt install build-essential
+```
+It is also recommended to use micromamba, conda, anaconda or other environments to avoid bloating system python with too many dependencies.
+Assuming you installed [micromamba](https://mamba.readthedocs.io/en/latest/user_guide/micromamba.html), you will have to create an environment and enable the library locally
+```
+micromamba create -f environment.yaml
+micromabma activate indexpaper
+pip install -e .
+```
+The last command is optional. With conda/anaconda the commands will look the same but with another name of executable.
+
+## Running local Qdrant
+
+We provide docker-compose configuration to run local qdrant (you can also use qdrant cloud instead).
+To run local qdrant install docker compose (sometimes needs sudo) and run:
+```bash
+cd services
+docker compose up
+```
+Then you should be able to see  http://localhost:6333/dashboard
+
+# Additional requirements
+
+index.py has local dependencies on other modules, for this reason if you are running it inside indexpaper project folder consider having it installed locally:
+```bash
+pip install -e .
+```
+
+# indexing a dataset
+
+To index a dataset you can use either index.py dataset subcommand or you look how to do it in code in papers.ipynb example notebook
+For example, if we want to index "longevity-genie/tacutu_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "cuda" as device and with 10 papers in a slice.
+And we want to write it to the local version of qdrant located at http://localhost:6333 (see services for docker-compose file):
+```bash
+python indexpaper/index.py dataset --collection biolinkbert_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --url http://localhost:6333 --model michiyasunaga/BioLinkBERT-large --slice 10 --chunk_size 512 --device cuda
+```
+
+Another example. If we want to index "longevity-genie/moskalev_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "gpu" as device and with 10 papers in a slice.
+And we want to use our Qdrant cloud key (fill in QDRANT_KEY or put it to environment variable)
+```bash
+python indexpaper/index.py dataset --collection biolinkbert_512_moskalev_papers --dataset "longevity-genie/moskalev_papers" --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 10 --chunk_size 512 --device cuda
+```
+Another example. Robi Tacutu papers with cpu using QDRANT_KEY, cluster url (put yours) and michiyasunaga/BioLinkBERT-large embeddings model:
+```
+python indexpaper/index.py dataset --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --collection biolord_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 10 --chunk_size 512 --device cpu
+```
+If you want to recreate the collection from scretch you can also add --rewrite true
+
+# Indexing papers
 
 For example if you have your papers inside data/output/test/papers folder, and you want to make a ChromaDB index at data/output/test/index you can do it by:
 ```bash
@@ -52,41 +113,4 @@ python example.py evaluate --model intfloat/multilingual-e5-large --dataset long
 To measure time
 ```bash
 python example.py measure --model intfloat/multilingual-e5-large --dataset longevity-genie/tacutu_papers
-```
-
-# indexing a dataset
-
-To index a dataset you can use either index.py dataset subcomment or you look how to do it in code in papers.ipynb example notebook
-For example, if we want to index "longevity-genie/tacutu_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "cuda" as device and with 10 papers in a slice.
-And we want to write it to the local version of qdrant located at http://localhost:6333 (see services for docker-compose file):
-```bash
-python indexpaper/index.py dataset --collection biolinkbert_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --url http://localhost:6333 --model michiyasunaga/BioLinkBERT-large --slice 10 --chunk_size 512 --device cuda
-```
-
-Another example. If we want to index "longevity-genie/moskalev_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "gpu" as device and with 10 papers in a slice.
-And we want to use our Qdrant cloud key (fill in QDRANT_KEY or put it to environment variable)
-```bash
-python indexpaper/index.py dataset --collection biolinkbert_512_moskalev_papers --dataset "longevity-genie/moskalev_papers" --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 10 --chunk_size 512 --device cuda
-```
-Another example. Robi Tacutu papers with cpu using QDRANT_KEY, cluster url (put yours) and michiyasunaga/BioLinkBERT-large embeddings model:
-```
-python indexpaper/index.py dataset --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --collection biolord_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 10 --chunk_size 512 --device cpu
-```
-If you want to recreate the collection from scretch you can also add --rewrite true
-
-# Runnning local Qdrant
-
-We provide docker-compose configuration to run local qdrant (you can also use qdrant cloud instead).
-To run local qdrant install docker compose (sometimes needs sudo) and run:
-```bash
-cd services
-docker compose up
-```
-Then you should be able to see  http://localhost:6333/dashboard
-
-# Additional requirements
-
-index.py has local dependencies on other modules, for this reason if you are running it inside indexpaper project folder consider having it installed locally:
-```bash
-pip install -e .
 ```

@@ -174,8 +174,8 @@ class Paperset:
 
     @beartype
     def index_by_slices(self, n: int, db: VectorStore, start: int = 0):
-        @timing(f"one more slice of {n} papers, starting from paper {start} has been indexed; ")
-        def index_fun(docs: list[Document]) -> None:
+        @timing(f"one more slice of {n} papers has been indexed")
+        def index_paper_slice(docs: list[Document]) -> None:
             if len(docs) == 0:
                 logger.info(f"no more documents to index!")
                 return None
@@ -184,5 +184,5 @@ class Paperset:
             ids = [self.generate_id_from_data(d.page_content) for d in docs]
             db.add_texts(texts=texts, metadatas=metadatas, ids=ids)
 
-        return self.foreach_document_slice(n, index_fun)
+        return self.foreach_document_slice(n, index_paper_slice, start = start)
 
