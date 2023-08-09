@@ -115,6 +115,7 @@ class SourceTextSplitter(RecursiveCharacterTextSplitter, ABC):
                 documents.append(new_doc)
         return documents
 
+
 class HuggingFaceSplitter(SourceTextSplitter, ABC):
 
     tokenizer: PreTrainedTokenizerBase

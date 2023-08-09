@@ -121,6 +121,7 @@ def write_remote_db(url: str,
         raise Exception(f"Remote Chroma is not yet supported by this script!")
     pass
 
+
 @beartype
 def make_local_db(collection_name: str,
                   documents: list[Document],
