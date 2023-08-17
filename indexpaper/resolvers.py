@@ -22,7 +22,7 @@ class EmbeddingModels(Enum):
     bioelectra: str = 'menadsa/S-BioELECTRA'
     biolinkbert: str = "michiyasunaga/BioLinkBERT-large" #best on https://microsoft.github.io/BLURB/leaderboard.html
     ada2: str = ""
-    default: str = bge_base_en
+    default: str = bge_large_en
 
 
 class Device(Enum):
