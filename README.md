@@ -61,7 +61,7 @@ Another example. Robi Tacutu papers with cpu using QDRANT_KEY, cluster url (put 
 ```
 python indexpaper/index.py dataset --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --collection biolord_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 10 --chunk_size 512 --device cpu
 ```
-If  you do not specify  embeddings, slice and chunk, then BGE-base-en with chunk-size 512 and slice of 100 is used by default:
+If  you do not specify  embeddings, slice and chunk, then BGE-large-en with chunk-size 512 and slice of 100 is used by default:
 ```
 python indexpaper/index.py dataset --collection bge_base_512_moskalev_papers_paragraphs_10 --dataset "longevity-genie/moskalev_papers" --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --key QDRANT_KEY
 ```

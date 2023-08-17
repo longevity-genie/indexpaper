@@ -5,7 +5,8 @@ from langchain.embeddings import OpenAIEmbeddings, LlamaCppEmbeddings, VertexAIE
 from langchain.embeddings.base import Embeddings
 from loguru import logger
 from pycomfort.files import *
-
+from langchain.embeddings import HuggingFaceBgeEmbeddings
+from langchain.embeddings.huggingface import *
 from indexpaper.splitting import OpenAISplitter, SourceTextSplitter, HuggingFaceSplitter
 
 class EmbeddingModels(Enum):
@@ -68,8 +69,7 @@ VECTOR_DATABASES: list[str] = [db.value for db in VectorDatabase]
 def resolve_splitter(embeddings_type: EmbeddingType,
 
                      model: Optional[Union[Path, str]] = None,
-                     chunk_size: Optional[int] = None,
-                    device: Device = Device.cpu
+                     chunk_size: Optional[int] = None
                      ) -> SourceTextSplitter:
     """
     initializes a splitter based on embeddingtype and additional parameters
@@ -123,8 +123,7 @@ def resolve_embeddings(embeddings_type: EmbeddingType, model: Optional[Union[Pat
         else:
             return HuggingFaceEmbeddings(model_name = str(model), model_kwargs={'device': device.value}, encode_kwargs=encode_kwargs)
     elif embeddings_type == EmbeddingType.HuggingFaceBGE:
-        from langchain.embeddings import HuggingFaceBgeEmbeddings
-        model_name = "BAAI/bge-base-en" if model is None else model
+        model_name = "BAAI/bge-large-en" if model is None else model
         model_kwargs = {'device': device.value}
         encode_kwargs = {'normalize_embeddings': normalize_embeddings} # set True to compute cosine similarity
         return HuggingFaceBgeEmbeddings(

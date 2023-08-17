@@ -11,6 +11,8 @@ from langchain.text_splitter import TextSplitter
 from langchain.vectorstores import Chroma, VectorStore, Qdrant
 from pycomfort.config import load_environment_keys
 from qdrant_client import QdrantClient
+from langchain.embeddings import HuggingFaceBgeEmbeddings
+from langchain.embeddings.huggingface import *
 
 from indexpaper.resolvers import *
 from indexpaper.splitting import SourceTextSplitter, papers_to_documents
@@ -85,9 +87,9 @@ def init_qdrant(collection_name: str,
     # Just do a single quick embedding to get vector size
     collections = client.get_collections()
     if always_recreate or collection_name not in collections.collections:
-        partial_embeddings = embeddings.embed_documents("Hello world text!")
+        partial_embeddings = embeddings.embed_documents(["Hello world text!"])
         vector_size = len(partial_embeddings[0])
-        logger.trace(f"computed probe \nvector size for the model was {vector_size}")
+        logger.info(f"creating collection {collection_name},\n computed probe vector size for the model was {vector_size}")
         distance_func = distance_func.upper()
         client.recreate_collection(
             collection_name=collection_name,
