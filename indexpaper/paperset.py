@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import functools
 import hashlib
 from typing import TypeVar
 
@@ -26,10 +27,21 @@ DEFAULT_COLUMNS = ('corpusid',
                    #'content_text'
                    )
 
+
+
+
 class Paperset:
     """
     The class that makes it easier to work with dataset or papers for indexing, can be either hugging face or parquet
     """
+
+    @staticmethod
+    @beartype
+    def default_transform(content: list[str], size: int = 10, step: int = 10)-> list[str]:
+        result = content if len(content) <2 else seq(content).sliding(size, step).map(lambda s: s.reduce(lambda x, y: x + "\n" + y)).to_list()
+        #print(f"**************************************************************\nfrom {len(content)} to {len(result)}")
+        return result
+
 
     lazy_frame: pl.LazyFrame
     content_field: str #"content_text" #'annotations_paragraph'
@@ -48,11 +60,15 @@ class Paperset:
         df = pl.from_arrow(dataset.data.table).lazy()
         return df if default_columns is None else df.select(default_columns)
 
+    transform_content: Optional[Callable[[list], list]]
+
     @beartype
     def __init__(self, df_name_or_path: Union[pl.LazyFrame, str, Path],
                  splitter: Optional[TextSplitter] = None,
                  content_field: str = "annotations_paragraph",#'content_text',
-                 default_columns=DEFAULT_COLUMNS, low_memory: bool = False):
+                 default_columns=DEFAULT_COLUMNS, low_memory: bool = False,
+                 transform_content: Optional[Callable[[list], list]] = None
+                 ):
         self.splitter = splitter
         if isinstance(df_name_or_path, pl.LazyFrame):
             self.lazy_frame = df_name_or_path if default_columns is None else df_name_or_path.select(default_columns)
@@ -63,6 +79,7 @@ class Paperset:
             self.lazy_frame = Paperset.get_dataset(df_name_or_path, default_columns)
         self.content_field = content_field
         self.columns = self.lazy_frame.columns
+        self.transform_content = functools.partial(self.default_transform, size = 20, step = 20) if transform_content is None else transform_content
         assert content_field in self.columns, f"{content_field} has not been found in dataframe columns {self.columns}"
 
     @beartype
@@ -86,7 +103,7 @@ class Paperset:
         """
         d: dict = dict(zip(self.columns, row))
         data = d[self.content_field]
-        contents = data if type(data) is list else [data]
+        contents = self.transform_content(data if type(data) is list else [data])
         meta = {k:v for k,v in d.items() if k != self.content_field}
         if "externalids_doi" in meta and "doi" not in meta:
             meta["doi"] = meta["externalids_doi"]

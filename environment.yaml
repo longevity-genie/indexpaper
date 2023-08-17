@@ -21,7 +21,7 @@ dependencies:
       - tiktoken
       - openai
       - chromadb
-      - langchain
+      - langchain>=0.0.266
       - qdrant-client
       - sentence_transformers
       - datasets

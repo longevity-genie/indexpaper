@@ -58,13 +58,19 @@ class EmbeddingType(Enum):
     Llama = "llama"
     VertexAI = "vertexai"
     HuggingFace = "huggingface"
+    HuggingFaceBGE = "huggingface_bge"
 
 
 EMBEDDINGS: list[str] = [e.value for e in EmbeddingType]
 VECTOR_DATABASES: list[str] = [db.value for db in VectorDatabase]
 
 
-def resolve_splitter(embeddings_type: EmbeddingType, model: Optional[Union[Path, str]] = None, chunk_size: Optional[int] = None) -> SourceTextSplitter:
+def resolve_splitter(embeddings_type: EmbeddingType,
+
+                     model: Optional[Union[Path, str]] = None,
+                     chunk_size: Optional[int] = None,
+                    device: Device = Device.cpu
+                     ) -> SourceTextSplitter:
     """
     initializes a splitter based on embeddingtype and additional parameters
     :param embeddings_type:
@@ -76,7 +82,7 @@ def resolve_splitter(embeddings_type: EmbeddingType, model: Optional[Union[Path,
         if chunk_size is None:
             chunk_size = 3600
         return OpenAISplitter(tokens=chunk_size)
-    elif embeddings_type.HuggingFace:
+    elif embeddings_type==embeddings_type.HuggingFace or embeddings_type==embeddings_type.HuggingFaceBGE:
         if chunk_size is None:
             chunk_size = 512
         if model is None:
@@ -89,7 +95,7 @@ def resolve_splitter(embeddings_type: EmbeddingType, model: Optional[Union[Path,
         return OpenAISplitter(tokens=chunk_size)
 
 
-def resolve_embeddings(embeddings_type: EmbeddingType, model: Optional[Union[Path, str]] = None, device: Device = Device.cpu) -> Embeddings:
+def resolve_embeddings(embeddings_type: EmbeddingType, model: Optional[Union[Path, str]] = None, device: Device = Device.cpu, normalize_embeddings: bool = True) -> Embeddings:
     """
     Initializes embedding instance based on embedding type enum and on additional parameter like model and device
     :param embeddings_type:
@@ -110,11 +116,22 @@ def resolve_embeddings(embeddings_type: EmbeddingType, model: Optional[Union[Pat
     elif embeddings_type == EmbeddingType.VertexAI:
         return VertexAIEmbeddings()
     elif embeddings_type == EmbeddingType.HuggingFace:
+        encode_kwargs = {'normalize_embeddings': normalize_embeddings}
         if model is None:
             logger.warning(f"for huggingface the model name should be specified")
-            return HuggingFaceEmbeddings(model_kwargs={'device': device.value})
+            return HuggingFaceEmbeddings(model_kwargs={'device': device.value}, encode_kwargs=encode_kwargs)
         else:
-            return HuggingFaceEmbeddings(model_name = str(model), model_kwargs={'device': device.value})
+            return HuggingFaceEmbeddings(model_name = str(model), model_kwargs={'device': device.value}, encode_kwargs=encode_kwargs)
+    elif embeddings_type == EmbeddingType.HuggingFaceBGE:
+        from langchain.embeddings import HuggingFaceBgeEmbeddings
+        model_name = "BAAI/bge-base-en" if model is None else model
+        model_kwargs = {'device': device.value}
+        encode_kwargs = {'normalize_embeddings': normalize_embeddings} # set True to compute cosine similarity
+        return HuggingFaceBgeEmbeddings(
+            model_name=model_name,
+            model_kwargs=model_kwargs,
+            encode_kwargs=encode_kwargs
+        )
     else:
         logger.warning(f"{embeddings_type.value} is not yet supported by CLI, using default openai embeddings instead")
         return OpenAIEmbeddings()

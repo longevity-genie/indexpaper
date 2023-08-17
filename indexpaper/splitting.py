@@ -131,7 +131,7 @@ class HuggingFaceSplitter(SourceTextSplitter, ABC):
         self.tokenizer = AutoTokenizer.from_pretrained(model)
 
         def length_function(text: str) -> int:
-            return len(self.tokenizer.encode(text))
+            return len(self.tokenizer.encode(text, padding=True, truncation=True, return_tensors='pt'))
 
         super().__init__(chunk_size=tokens, chunk_overlap=tokens_overlap,
                          length_function=length_function,

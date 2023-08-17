@@ -51,7 +51,7 @@ To index a dataset you can use either index.py dataset subcommand or you look ho
 For example, if we want to index "longevity-genie/tacutu_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "cuda" as device and with 10 papers in a slice.
 And we want to write it to the local version of qdrant located at http://localhost:6333 (see services for docker-compose file):
 ```bash
-python indexpaper/index.py dataset --collection bge_large_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --url http://localhost:6333 --model BAAI/bge-large-en --slice 10 --chunk_size 512 --device cuda
+python indexpaper/index.py dataset --collection bge_large_512_tacutu_papers_paragraphs_10 --dataset "longevity-genie/tacutu_papers" --url http://localhost:6333 --model BAAI/bge-large-en --slice 10 --chunk_size 500 --device cuda
 ```
 
 Another example. If we want to index "longevity-genie/moskalev_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "gpu" as device and with 10 papers in a slice.
@@ -60,6 +60,10 @@ And we want to use our Qdrant cloud key (fill in QDRANT_KEY or put it to environ
 Another example. Robi Tacutu papers with cpu using QDRANT_KEY, cluster url (put yours) and michiyasunaga/BioLinkBERT-large embeddings model:
 ```
 python indexpaper/index.py dataset --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --collection biolord_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 10 --chunk_size 512 --device cpu
+```
+If  you do not specify  embeddings, slice and chunk, then BGE-base-en with chunk-size 512 and slice of 100 is used by default:
+```
+python indexpaper/index.py dataset --collection bge_base_512_moskalev_papers_paragraphs_10 --dataset "longevity-genie/moskalev_papers" --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --key QDRANT_KEY
 ```
 If you want to recreate the collection from scratch you can also add --rewrite true
 

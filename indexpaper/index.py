@@ -55,7 +55,7 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
 @click.option('--collection', default='dataset', help='dataset collection name')
 @click.option('--url', type=click.STRING, required=True, help="URL or API key for example http://localhost:6333 for qdrant")
 @click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
-@click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.HuggingFace.value,
+@click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.HuggingFaceBGE.value,
               help='embeddings type, huggingface by default')
 @click.option('--chunk_size', type=click.INT, default=512, help='size of the chunk for splitting (characters for recursive spliter and tokens for openai one)')
 @click.option("--model", type=click.Path(), default=EmbeddingModels.default.value, help="path to the model (required for embeddings)")
@@ -71,7 +71,7 @@ def index_dataset_command(dataset: str, collection: str, url: Optional[str], key
     load_environment_keys(usecwd=True)
     assert not (url is None and key is None), "either database url or api_key should be provided!"
     embedding_type = EmbeddingType(embeddings)
-    logger.info(f"computing embeddings for {dataset} of {embeddings} type with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
+    logger.info(f"computing embeddings into collection {collection} for {dataset} of {embeddings} type with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
     embedding_function = resolve_embeddings(embedding_type, model = model, device = Device(device))
     splitter = resolve_splitter(embedding_type, model, chunk_size)
     paper_set = Paperset(dataset, splitter=splitter, content_field=content_field)

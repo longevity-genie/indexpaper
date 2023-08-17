@@ -85,8 +85,9 @@ def init_qdrant(collection_name: str,
     # Just do a single quick embedding to get vector size
     collections = client.get_collections()
     if always_recreate or collection_name not in collections.collections:
-        partial_embeddings = embeddings.embed_documents("probe")
+        partial_embeddings = embeddings.embed_documents("Hello world text!")
         vector_size = len(partial_embeddings[0])
+        logger.trace(f"computed probe \nvector size for the model was {vector_size}")
         distance_func = distance_func.upper()
         client.recreate_collection(
             collection_name=collection_name,
