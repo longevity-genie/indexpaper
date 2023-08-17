@@ -10,6 +10,7 @@ from indexpaper.splitting import OpenAISplitter, SourceTextSplitter, HuggingFace
 
 class EmbeddingModels(Enum):
     all_mpnet_base: str = "sentence-transformers/all-mpnet-base-v2"
+    bge_large_en: str = "BAAI/bge-large-en" #so far best at https://huggingface.co/spaces/mteb/leaderboard
     bge_base_en: str = "BAAI/bge-base-en" #so far second best at https://huggingface.co/spaces/mteb/leaderboard
     gte_large: str = "thenlper/gte-large"
     gte_base: str = "thenlper/gte-base"
@@ -19,7 +20,7 @@ class EmbeddingModels(Enum):
     biolord: str = 'FremyCompany/BioLORD-STAMB2-v1' #based on all-mpnet-base-v2 finetined for bio domain
     bioelectra: str = 'menadsa/S-BioELECTRA'
     biolinkbert: str = "michiyasunaga/BioLinkBERT-large" #best on https://microsoft.github.io/BLURB/leaderboard.html
-    default: str = biolinkbert
+    default: str = bge_base_en
 
 
 class Device(Enum):

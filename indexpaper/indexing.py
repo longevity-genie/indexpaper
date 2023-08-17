@@ -83,11 +83,11 @@ def init_qdrant(collection_name: str,
     from qdrant_client.http import models as rest
     #client.recreate_collection(collection_name)
     # Just do a single quick embedding to get vector size
-    partial_embeddings = embeddings.embed_documents("probe")
-    vector_size = len(partial_embeddings[0])
-    distance_func = distance_func.upper()
     collections = client.get_collections()
     if always_recreate or collection_name not in collections.collections:
+        partial_embeddings = embeddings.embed_documents("probe")
+        vector_size = len(partial_embeddings[0])
+        distance_func = distance_func.upper()
         client.recreate_collection(
             collection_name=collection_name,
             vectors_config=rest.VectorParams(
