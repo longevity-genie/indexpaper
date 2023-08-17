@@ -58,14 +58,15 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
 @click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.HuggingFace.value,
               help='embeddings type, huggingface by default')
 @click.option('--chunk_size', type=click.INT, default=512, help='size of the chunk for splitting (characters for recursive spliter and tokens for openai one)')
-@click.option("--model", type=click.Path(), default=EmbeddingModels.default, help="path to the model (required for embeddings)")
+@click.option("--model", type=click.Path(), default=EmbeddingModels.default.value, help="path to the model (required for embeddings)")
 @click.option("--device", type=click.Choice(DEVICES), default=Device.cpu.value, help="which device to use, cpu by default, so do not forget to put cuda if you are using NVIDIA")
 @click.option('--prefer_grpc', type=click.BOOL, default=False, help = "only needed for qdrant database")
 @click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
 @click.option('--start', type=click.INT, default=0, help='When to start slicing the dataset')
+@click.option('--content_field', type=click.STRING, default="annotations_paragraph", help = "default dataset content field")
 @click.option('--rewrite', type=click.BOOL, default=False, help = "Rewrite collection if it is already present")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def index_dataset_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], embeddings: str, chunk_size: int, model: Optional[str], device: Optional[str], prefer_grpc: bool, slice: int, start: int, rewrite: bool, log_level: str) -> Path:
+def index_dataset_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], embeddings: str, chunk_size: int, model: Optional[str], device: Optional[str], prefer_grpc: bool, slice: int, start: int, content_field: str, rewrite: bool, log_level: str) -> Path:
     configure_logger(log_level)
     load_environment_keys(usecwd=True)
     assert not (url is None and key is None), "either database url or api_key should be provided!"
@@ -73,7 +74,7 @@ def index_dataset_command(dataset: str, collection: str, url: Optional[str], key
     logger.info(f"computing embeddings for {dataset} of {embeddings} type with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
     embedding_function = resolve_embeddings(embedding_type, model = model, device = Device(device))
     splitter = resolve_splitter(embedding_type, model, chunk_size)
-    paper_set = Paperset(dataset, splitter=splitter)
+    paper_set = Paperset(dataset, splitter=splitter, content_field=content_field)
     api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
     db = init_qdrant(collection, path_or_url=url, embeddings=embedding_function, prefer_grpc=prefer_grpc, always_recreate = rewrite, api_key=api_key)
     return paper_set.index_by_slices(slice, db, start = start)

@@ -22,8 +22,8 @@ DEFAULT_COLUMNS = ('corpusid',
                   'annotations_abstract',
                   'annotations_author',
                   'annotations_title',
-                  # 'annotations_paragraph',
-                   'content_text'
+                   'annotations_paragraph',
+                   #'content_text'
                    )
 
 class Paperset:
@@ -51,7 +51,7 @@ class Paperset:
     @beartype
     def __init__(self, df_name_or_path: Union[pl.LazyFrame, str, Path],
                  splitter: Optional[TextSplitter] = None,
-                 content_field: str = 'content_text',
+                 content_field: str = "annotations_paragraph",#'content_text',
                  default_columns=DEFAULT_COLUMNS, low_memory: bool = False):
         self.splitter = splitter
         if isinstance(df_name_or_path, pl.LazyFrame):

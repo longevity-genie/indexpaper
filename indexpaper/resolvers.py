@@ -20,6 +20,7 @@ class EmbeddingModels(Enum):
     biolord: str = 'FremyCompany/BioLORD-STAMB2-v1' #based on all-mpnet-base-v2 finetined for bio domain
     bioelectra: str = 'menadsa/S-BioELECTRA'
     biolinkbert: str = "michiyasunaga/BioLinkBERT-large" #best on https://microsoft.github.io/BLURB/leaderboard.html
+    ada2: str = ""
     default: str = bge_base_en
 
 
