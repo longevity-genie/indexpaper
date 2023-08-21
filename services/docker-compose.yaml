@@ -1,9 +1,9 @@
 version: '3.8'
 services:
   qdrant:
-    image: qdrant/qdrant:v1.4.0
+    image: qdrant/qdrant:v1.4.1
     ports:
-      - 3000:3000
+      - 3001:3000
       - 6333:6333
       - 6334:6334
     volumes:
