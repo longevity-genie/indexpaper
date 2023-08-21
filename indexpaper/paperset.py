@@ -109,13 +109,18 @@ class Paperset:
             meta["doi"] = meta["externalids_doi"]
         def with_index(meta: dict, i):
             meta["paragraph"] = i
-            meta["source"] = meta["doi"] + "#" + str(i)
+            meta["source"] = meta["doi"] + "#" + str(i) if "doi" in meta and meta["doi"] is not None else meta["externalids_pubmed"] + "#" + str(i)
             return meta
         docs: list[Document] = [Document(page_content = c, metadata=with_index(meta, i)) for (c, i) in seq(contents).zip_with_index(1)]
         return self.split_documents(docs)
 
     @beartype
     def documents_from_dataset_slice(self, df: pl.DataFrame) -> list[Document]:
+        """
+        turns slices of n papers into documents by calling row_to_documeents(r) on each paper
+        :param df:
+        :return:
+        """
         return seq(self.row_to_documents(r) for r in df.iter_rows()).flatten().to_list()
 
 
@@ -146,7 +151,7 @@ class Paperset:
     def fold_left_document_slices(self, n: int, fold: Callable[[T, list[Document]], T], acc: T, start: int = 0) -> T:
         """
         Wrapper to apply it to the documents
-        :param n:
+        :param n: how many papers to take in a slice
         :param fold:
         :param acc:
         :param start:
@@ -178,7 +183,6 @@ class Paperset:
             return fun(self.documents_from_dataset_slice(df))
         return self.foreach_slice(n, fun_df, start)
 
-
     def generate_id_from_data(self, data):
         """
         function to avoid duplicates
@@ -191,6 +195,13 @@ class Paperset:
 
     @beartype
     def index_by_slices(self, n: int, db: VectorStore, start: int = 0):
+        """
+
+        :param n: number of papers included in the slice
+        :param db: vectore store to store results
+        :param start: start index
+        :return:
+        """
         @timing(f"one more slice of {n} papers has been indexed")
         def index_paper_slice(docs: list[Document]) -> None:
             if len(docs) == 0:
