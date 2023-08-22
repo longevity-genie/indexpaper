@@ -13,7 +13,7 @@ from pycomfort.config import load_environment_keys
 from qdrant_client import QdrantClient
 from langchain.embeddings import HuggingFaceBgeEmbeddings
 from langchain.embeddings.huggingface import *
-
+from qdrant_client.http.models import PayloadSchemaType
 from indexpaper.resolvers import *
 from indexpaper.splitting import SourceTextSplitter, papers_to_documents
 from indexpaper.utils import timing
@@ -59,6 +59,8 @@ def init_qdrant(collection_name: str,
                 api_key: Optional[str] = None,
                 distance_func: str = "Cosine",
                 prefer_grpc: bool = False,
+                timeout: Optional[int] = 3600,
+                indexes: Optional[dict[str, PayloadSchemaType]] = None
                 ):
     """
     Function that initializes QDrant
@@ -86,7 +88,7 @@ def init_qdrant(collection_name: str,
     #client.recreate_collection(collection_name)
     # Just do a single quick embedding to get vector size
     collections = client.get_collections()
-    if always_recreate or collection_name not in collections.collections:
+    if always_recreate or not seq(collections.collections).exists(lambda c: c.name == collection_name):
         partial_embeddings = embeddings.embed_documents(["Hello world text!"])
         vector_size = len(partial_embeddings[0])
         logger.info(f"creating collection {collection_name},\n computed probe vector size for the model was {vector_size}")
@@ -95,9 +97,11 @@ def init_qdrant(collection_name: str,
             collection_name=collection_name,
             vectors_config=rest.VectorParams(
                 size=vector_size,
-                distance=rest.Distance[distance_func],
-            )
+                distance=rest.Distance[distance_func]
+            ), timeout=timeout
         )
+        for k, v in indexes.items():
+            client.create_payload_index(collection_name, k, v)
     return Qdrant(client, collection_name=collection_name, embeddings=embeddings)
 
 

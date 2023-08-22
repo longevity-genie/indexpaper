@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
+from typing import Dict
+
 import click
 from click import Context
 from pycomfort.config import load_environment_keys, LOG_LEVELS, LogLevel, configure_logger
+from qdrant_client.http.models import PayloadSchemaType
 
 from indexpaper.indexing import index_selected_papers, index_selected_documents, init_qdrant
 from indexpaper.paperset import Paperset
 from indexpaper.resolvers import *
 from indexpaper.utils import timing
-
 
 @click.group(invoke_without_command=False)
 @click.pass_context
@@ -76,7 +78,11 @@ def index_dataset_command(dataset: str, collection: str, url: Optional[str], key
     splitter = resolve_splitter(embedding_type, model, chunk_size)
     paper_set = Paperset(dataset, splitter=splitter, content_field=content_field)
     api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
-    db = init_qdrant(collection, path_or_url=url, embeddings=embedding_function, prefer_grpc=prefer_grpc, always_recreate = rewrite, api_key=api_key)
+    indexes: dict[str, PayloadSchemaType] = {
+        "doi": PayloadSchemaType.TEXT,
+        "source": PayloadSchemaType.TEXT
+    }
+    db = init_qdrant(collection, path_or_url=url, embeddings=embedding_function, prefer_grpc=prefer_grpc, always_recreate = rewrite, api_key=api_key, indexes=indexes)
     return paper_set.index_by_slices(slice, db, start = start)
 
 
