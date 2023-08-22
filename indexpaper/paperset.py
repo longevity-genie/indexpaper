@@ -105,11 +105,19 @@ class Paperset:
         data = d[self.content_field]
         contents = self.transform_content(data if type(data) is list else [data])
         meta = {k:v for k,v in d.items() if k != self.content_field}
-        if "externalids_doi" in meta and "doi" not in meta:
-            meta["doi"] = meta["externalids_doi"]
-        def with_index(meta: dict, i):
+        def with_index(meta: dict, i: int):
             meta["paragraph"] = i
-            meta["source"] = meta["doi"] + "#" + str(i) if "doi" in meta and meta["doi"] is not None else meta["externalids_pubmed"] + "#" + str(i)
+            if "doi" in meta and meta["doi"] is not None:
+                meta["source"] = meta["doi"] + "#" + str(i)
+            elif "externalids_doi" in meta and meta["externalids_doi"] is not None:
+                meta["doi"] = meta["externalids_doi"]
+                meta["source"] = meta["doi"] + "#" + str(i)
+            elif "externalids_pubmed" in meta and meta["externalids_pubmed"] is not None:
+                meta["source"] = str(meta["externalids_pubmed"]) + "#" + str(i)
+            elif "corpusid" in meta and meta["corpusid"] is not None:
+                meta["source"] = str(meta["corpusid"]) + "#" + str(i)
+            else:
+                meta["source"] = "unspecified" + "#" + str(i)
             return meta
         docs: list[Document] = [Document(page_content = c, metadata=with_index(meta, i)) for (c, i) in seq(contents).zip_with_index(1)]
         return self.split_documents(docs)
@@ -196,9 +204,8 @@ class Paperset:
     @beartype
     def index_by_slices(self, n: int, db: VectorStore, start: int = 0):
         """
-
         :param n: number of papers included in the slice
-        :param db: vectore store to store results
+        :param db: vector store to store results
         :param start: start index
         :return:
         """
