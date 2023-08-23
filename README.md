@@ -12,7 +12,7 @@ For openai embeddings to work you have to create .env file and specify your open
 
 Install the library with:
 ```bash
-pip install getpaper
+pip install indexpaper
 ```
 
 On linux systems you sometimes need to check that build--essential are installed:
@@ -59,7 +59,7 @@ And we want to use our Qdrant cloud key (fill in QDRANT_KEY or put it to environ
 
 Another example. Robi Tacutu papers with cpu using QDRANT_KEY, cluster url (put yours) and michiyasunaga/BioLinkBERT-large embeddings model:
 ```
-python indexpaper/index.py dataset --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --collection biolinkbert_large_512_tacutu_papers --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 100 --chunk_size 512 --device cpu
+python indexpaper/index.py dataset --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --collection biolinkbert_large_512_tacutu_papers --embeddings huggingface --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 500 --chunk_size 512 --device cpu
 ```
 If  you do not specify  embeddings, slice and chunk, then BGE-large-en with chunk-size 512 and slice of 100 is used by default:
 ```
