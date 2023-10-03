@@ -1,8 +1,5 @@
 import time
 
-import polars as pl
-import torch
-from paperset import load_dataset
 from torch import Tensor
 from transformers import AutoTokenizer, AutoModel
 

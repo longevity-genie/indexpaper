@@ -79,7 +79,7 @@ class Paperset:
             self.lazy_frame = Paperset.get_dataset(df_name_or_path, default_columns)
         self.content_field = content_field
         self.columns = self.lazy_frame.columns
-        self.transform_content = functools.partial(self.default_transform, size = 20, step = 20) if transform_content is None else transform_content
+        self.transform_content = functools.partial(self.default_transform, size = 10, step = 10) if transform_content is None else transform_content
         assert content_field in self.columns, f"{content_field} has not been found in dataframe columns {self.columns}"
 
     @beartype

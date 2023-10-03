@@ -14,14 +14,14 @@ dependencies:
   - pip:
       - pycomfort>=0.0.13
       - pynction
-      - polars>=0.18.11
+      - polars>=0.19.6
       - beartype
       - click
       - twine
       - tiktoken
       - openai
       - chromadb
-      - langchain>=0.0.266
-      - qdrant-client
+      - langchain>=0.0.306
+      - qdrant-client>=1.5.0
       - sentence_transformers
       - datasets

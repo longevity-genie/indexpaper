@@ -12,7 +12,10 @@ from indexpaper.splitting import OpenAISplitter, SourceTextSplitter, HuggingFace
 class EmbeddingModels(Enum):
     all_mpnet_base: str = "sentence-transformers/all-mpnet-base-v2"
     bge_large_en: str = "BAAI/bge-large-en" #so far best at https://huggingface.co/spaces/mteb/leaderboard
+    bge_base_en_1_5: str = "BAAI/bge-base-en-v1.5" #so far second best at https://huggingface.co/spaces/mteb/leaderboard
+    bge_large_en_1_5: str = "BAAI/bge-large-en-v1.5" #so far best at https://huggingface.co/spaces/mteb/leaderboard
     bge_base_en: str = "BAAI/bge-base-en" #so far second best at https://huggingface.co/spaces/mteb/leaderboard
+
     gte_large: str = "thenlper/gte-large"
     gte_base: str = "thenlper/gte-base"
     multilingual_e5_large: str = "intfloat/multilingual-e5-large" #supports many languages and pretty good
@@ -22,7 +25,7 @@ class EmbeddingModels(Enum):
     bioelectra: str = 'menadsa/S-BioELECTRA'
     biolinkbert: str = "michiyasunaga/BioLinkBERT-large" #best on https://microsoft.github.io/BLURB/leaderboard.html
     ada2: str = ""
-    default: str = bge_large_en
+    default: str = bge_large_en_1_5
 
 
 class Device(Enum):

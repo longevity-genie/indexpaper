@@ -20,7 +20,7 @@ def app(ctx: Context):
     pass
 
 
-@app.command("dataset")
+@app.command("index_papers")
 @click.option('--papers', type=click.Path(exists=True), help="papers folder to index")
 @click.option('--collection', default='papers', help='papers collection name')
 @click.option('--folder', type=click.Path(), default=None, help="folder to put chroma indexes to")
@@ -82,7 +82,7 @@ def index_dataset_command(dataset: str, collection: str, url: Optional[str], key
         "doi": PayloadSchemaType.TEXT,
         "source": PayloadSchemaType.TEXT
     }
-    db = init_qdrant(collection, path_or_url=url, embeddings=embedding_function, prefer_grpc=prefer_grpc, always_recreate = rewrite, api_key=api_key, indexes=indexes)
+    db = init_qdrant(collection, path_or_url=url, embeddings=embedding_function, prefer_grpc=prefer_grpc, always_recreate=rewrite, api_key=api_key, indexes=indexes)
     return paper_set.index_by_slices(slice, db, start = start)
 
 

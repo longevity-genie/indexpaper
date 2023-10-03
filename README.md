@@ -51,7 +51,7 @@ To index a dataset you can use either index.py dataset subcommand or you look ho
 For example, if we want to index "longevity-genie/tacutu_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "cuda" as device and with 10 papers in a slice.
 And we want to write it to the local version of qdrant located at http://localhost:6333 (see services for docker-compose file):
 ```bash
-python indexpaper/index.py dataset --collection bge_large_512_tacutu_papers_paragraphs_10 --dataset "longevity-genie/tacutu_papers" --url http://localhost:6333 --model BAAI/bge-large-en --slice 10 --chunk_size 500 --device cuda
+python indexpaper/index.py dataset --collection bge_large_v1.5_512_tacutu_papers_paragraphs_10 --dataset "longevity-genie/tacutu_papers" --url http://localhost:6333 --model BAAI/bge-large-en-v1.5 --slice 10 --chunk_size 500 --device cuda
 ```
 
 Another example. If we want to index "longevity-genie/moskalev_papers" huggingface dataset using "michiyasunaga/BioLinkBERT-large" hugging face embedding with "gpu" as device and with 10 papers in a slice.
@@ -59,18 +59,18 @@ And we want to use our Qdrant cloud key (fill in QDRANT_KEY or put it to environ
 
 Another example. Robi Tacutu papers with cpu using QDRANT_KEY, cluster url (put yours) and michiyasunaga/BioLinkBERT-large embeddings model:
 ```
-python indexpaper/index.py dataset --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --collection biolinkbert_large_512_tacutu_papers --embeddings huggingface --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 500 --chunk_size 512 --device cpu
+python indexpaper/index.py dataset --url https://62d4a96e-2b91-4ab8-a4dd-a91e626d874a.europe-west3-0.gcp.cloud.qdrant.io:6333 --collection biolinkbert_large_512_tacutu_papers --embeddings huggingface --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model michiyasunaga/BioLinkBERT-large --slice 500 --chunk_size 512 --device cpu
 ```
 If  you do not specify  embeddings, slice and chunk, then BGE-large-en with chunk-size 512 and slice of 100 is used by default:
 ```
-python indexpaper/index.py dataset --collection bge_large_512_moskalev_papers_paragraphs_10 --dataset "longevity-genie/moskalev_papers" --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --key QDRANT_KEY
+python indexpaper/index.py dataset --collection bge_large_v1.5_512_moskalev_papers_paragraphs_10 --dataset "longevity-genie/moskalev_papers" --url https://62d4a96e-2b91-4ab8-a4dd-a91e626d874a.europe-west3-0.gcp.cloud.qdrant.io:6333 --key QDRANT_KEY
 ```
 If you want to recreate the collection from scratch you can also add --rewrite true
 
 
 # Indexing papers
 
-For example if you have your papers inside data/output/test/papers folder, and you want to make a ChromaDB index at data/output/test/index you can do it by:
+For example if you have your papers inside data/output/test/papers folder, and you want to make an index at data/output/test/index you can do it by:
 ```bash
 indexpaper/index.py index_papers --papers data/output/test/papers --folder data/output/test/index --collection mypapers --chunk_size 6000
 ```
@@ -100,20 +100,3 @@ Note: if you want to use Qdrant cloud you do not need docker-compose, but you ne
 indexpaper/index.py index_papers --papers data/output/test/papers --url https://5bea7502-97d4-4876-98af-0cdf8af4bd18.us-east-1-0.aws.cloud.qdrant.io:6333 --key put_your_key_here --collection mypapers --chunk_size 6000 --database Qdrant
 ```
 Note: there are temporal issues with embeddings for llama.
-
-# Examples
-
-You can run examples.py to see usage examples and also to evaluate embeddings.
-
-For example if you want to evaluate how fast embeddings compute on Robi Tacutu papers you can run:
-```
-python example.py preload
-```
-to download dataset and model. And then:
-```bash
-python example.py evaluate --model intfloat/multilingual-e5-large --dataset longevity-genie/tacutu_papers
-```
-To measure time
-```bash
-python example.py measure --model intfloat/multilingual-e5-large --dataset longevity-genie/tacutu_papers
-```
