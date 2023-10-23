@@ -157,3 +157,4 @@ dmypy.json
 .pyre/
 
 data/output/test
+local_cache

@@ -68,6 +68,16 @@ python indexpaper/index.py dataset --collection bge_large_v1.5_512_moskalev_pape
 If you want to recreate the collection from scratch you can also add --rewrite true
 
 
+# Fast indexing
+
+We also experimentally support fast indexing
+
+Robi Tacutu papers QDRANT_KEY, cluster url (put yours) and  embeddings model:
+```
+python indexpaper/index.py fast_index --url https://62d4a96e-2b91-4ab8-a4dd-a91e626d874a.europe-west3-0.gcp.cloud.qdrant.io:6333 --collection bge_base_en_v1.5_tacutu_papers_10 --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model BAAI/bge-base-en-v1.5 --slice 100
+```
+
+
 # Indexing papers
 
 For example if you have your papers inside data/output/test/papers folder, and you want to make an index at data/output/test/index you can do it by:

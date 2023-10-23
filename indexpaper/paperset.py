@@ -9,6 +9,7 @@ from datasets import load_dataset
 from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
 from langchain.vectorstores import VectorStore, Qdrant
+from qdrant_client import QdrantClient
 
 from indexpaper.resolvers import *
 from indexpaper.utils import timing
@@ -37,7 +38,7 @@ class Paperset:
 
     @staticmethod
     @beartype
-    def default_transform(content: list[str], size: int = 10, step: int = 10)-> list[str]:
+    def default_transform(content: list[str], size: int = 10, step: int = 10) -> list[str]:
         result = content if len(content) <2 else seq(content).sliding(size, step).map(lambda s: s.reduce(lambda x, y: x + "\n" + y)).to_list()
         #print(f"**************************************************************\nfrom {len(content)} to {len(result)}")
         return result
@@ -200,6 +201,25 @@ class Paperset:
         if isinstance(data, str):  # check if data is a string
             data = data.encode('utf-8')  # encode the string into bytes
         return str(hex(int.from_bytes(hashlib.sha256(data).digest()[:32], 'little')))[-32:]
+
+    @beartype
+    def fast_index_by_slice(self, n: int, client: QdrantClient, collection_name: str, batch_size: int = 32, start: int = 0):
+        @timing(f"one more slice of {n} papers has been fast-indexed")
+        def fast_index_paper_slice(docs: list[Document]) -> None:
+            if len(docs) == 0:
+                logger.info(f"no more documents to index!")
+                return None
+            texts = [d.page_content for d in docs]
+            metadatas = [d.metadata for d in docs]
+            ids = [self.generate_id_from_data(d.page_content) for d in docs]
+            client.add(
+                collection_name=collection_name,
+                documents=texts,
+                metadata=metadatas,
+                ids=ids
+            )
+
+        return self.foreach_document_slice(n, fast_index_paper_slice, start = start)
 
     @beartype
     def index_by_slices(self, n: int, db: VectorStore, start: int = 0):

@@ -4,6 +4,7 @@ from typing import Dict
 import click
 from click import Context
 from pycomfort.config import load_environment_keys, LOG_LEVELS, LogLevel, configure_logger
+from qdrant_client import QdrantClient
 from qdrant_client.http.models import PayloadSchemaType
 
 from indexpaper.indexing import index_selected_papers, index_selected_documents, init_qdrant
@@ -51,6 +52,60 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
                                  device=Device(device),
                                  always_recreate=rewrite
                                  )
+
+@timing
+@app.command("fast_index")
+@click.option('--dataset', type=click.STRING, help="Dataset to index, can be either Path or hugging face dataset")
+@click.option('--collection', default='dataset', help='dataset collection name')
+@click.option('--url', type=click.STRING, required=True, help="URL or API key for example http://localhost:6333 for qdrant")
+@click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
+@click.option("--model", type=click.Path(), default=EmbeddingModels.default.bge_base_en_1_5, help="fast embedding model, BAAI/bge-base-en-v1.5 by default")
+@click.option('--prefer_grpc', type=click.BOOL, default=False, help = "only needed for qdrant database")
+@click.option('--start', type=click.INT, default=0, help='When to start slicing the dataset')
+@click.option('--content_field', type=click.STRING, default="annotations_paragraph", help = "default dataset content field")
+@click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
+@click.option('--batch_size', type=click.INT, default=32, help="Batch size, 32 by default")
+#@click.option('--rewrite', type=click.BOOL, default=False, help = "Rewrite collection if it is already present")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
+def fast_index_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], model: str, prefer_grpc: bool, start: int, content_field: str, slice: int, batch_size: int, log_level: str) -> Path:
+    configure_logger(log_level)
+    load_environment_keys(usecwd=True)
+    assert not (url is None and key is None), "either database url or api_key should be provided!"
+    chunk_size: int = 512
+    logger.info(f"computing embeddings into collection {collection} for {dataset} with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
+    splitter = HuggingFaceSplitter(model, tokens=chunk_size)
+    paper_set = Paperset(dataset, splitter=splitter, content_field=content_field)
+    api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
+    indexes: dict[str, PayloadSchemaType] = {
+        "doi": PayloadSchemaType.TEXT,
+        "source": PayloadSchemaType.TEXT
+    }
+    is_url = "ttp:" in url or "ttps:" in url
+    path: Optional[str] = None if is_url else url #actually the user can give either path or url
+    url: Optional[str] = url if is_url else None
+    logger.info(f"initializing quadrant database at {url}")
+    client: QdrantClient = QdrantClient(
+        url=url,
+        port=6333,
+        grpc_port=6334,
+        prefer_grpc=is_url if prefer_grpc is None else prefer_grpc,
+        api_key=api_key,
+        path=path
+    )
+    client.set_model(model)
+    from qdrant_client.http import models as rest
+    #client.recreate_collection(collection_name)
+    # Just do a single quick embedding to get vector size
+    """
+    if rewrite or not seq(collections.collections).exists(lambda c: c.name == collection):
+        logger.info(f"creating collection {collection}")
+        client.recreate_collection(collection_name=collection)
+        for k, v in indexes.items():
+            client.create_payload_index(collection, k, v)
+    collections = client.get_collections()
+    """
+    return paper_set.fast_index_by_slice(n = slice, client=client, collection_name=collection, batch_size=batch_size)
+
 @timing
 @app.command("dataset")
 @click.option('--dataset', type=click.STRING, help="Dataset to index, can be either Path or hugging face dataset")
