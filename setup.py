@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.0.12'
+VERSION = '0.0.13'
 DESCRIPTION = 'indexpaper - library to index papers with vector databases'
 LONG_DESCRIPTION = 'indexpaper - library to index papers with vector databases'
 

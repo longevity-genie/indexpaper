@@ -68,7 +68,8 @@ class Paperset:
                  splitter: Optional[TextSplitter] = None,
                  content_field: str = "annotations_paragraph",#'content_text',
                  default_columns=DEFAULT_COLUMNS, low_memory: bool = False,
-                 transform_content: Optional[Callable[[list], list]] = None
+                 transform_content: Optional[Callable[[list], list]] = None,
+                 paragraphs_together: int = 5
                  ):
         self.splitter = splitter
         if isinstance(df_name_or_path, pl.LazyFrame):
@@ -80,7 +81,7 @@ class Paperset:
             self.lazy_frame = Paperset.get_dataset(df_name_or_path, default_columns)
         self.content_field = content_field
         self.columns = self.lazy_frame.columns
-        self.transform_content = functools.partial(self.default_transform, size = 10, step = 10) if transform_content is None else transform_content
+        self.transform_content = functools.partial(self.default_transform, size = paragraphs_together, step = paragraphs_together) if transform_content is None else transform_content
         assert content_field in self.columns, f"{content_field} has not been found in dataframe columns {self.columns}"
 
     @beartype
@@ -203,20 +204,25 @@ class Paperset:
         return str(hex(int.from_bytes(hashlib.sha256(data).digest()[:32], 'little')))[-32:]
 
     @beartype
-    def fast_index_by_slice(self, n: int, client: QdrantClient, collection_name: str, batch_size: int = 32, start: int = 0):
+    def fast_index_by_slice(self, n: int, client: QdrantClient, collection_name: str, batch_size: int = 32, start: int = 0, parallel: Optional[int] = None):
         @timing(f"one more slice of {n} papers has been fast-indexed")
         def fast_index_paper_slice(docs: list[Document]) -> None:
             if len(docs) == 0:
                 logger.info(f"no more documents to index!")
                 return None
             texts = [d.page_content for d in docs]
+            for d in docs:
+                if "metadata" not in d.metadata: #ugly fix for metadata issue
+                    d.metadata["metadata"] = d.metadata.copy()
             metadatas = [d.metadata for d in docs]
             ids = [self.generate_id_from_data(d.page_content) for d in docs]
             client.add(
                 collection_name=collection_name,
                 documents=texts,
                 metadata=metadatas,
-                ids=ids
+                ids=ids,
+                batch_size=batch_size,
+                parallel=parallel
             )
 
         return self.foreach_document_slice(n, fast_index_paper_slice, start = start)

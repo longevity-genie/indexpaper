@@ -75,7 +75,7 @@ def resolve_splitter(embeddings_type: EmbeddingType,
                      chunk_size: Optional[int] = None
                      ) -> SourceTextSplitter:
     """
-    initializes a splitter based on embeddingtype and additional parameters
+    initializes a splitter based on embedding type and additional parameters
     :param embeddings_type:
     :param model:
     :param chunk_size:

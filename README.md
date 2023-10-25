@@ -70,11 +70,11 @@ If you want to recreate the collection from scratch you can also add --rewrite t
 
 # Fast indexing
 
-We also experimentally support fast indexing
+We also experimentally support fast indexing that has similar parameters, for example:
 
 Robi Tacutu papers QDRANT_KEY, cluster url (put yours) and  embeddings model:
 ```
-python indexpaper/index.py fast_index --url https://62d4a96e-2b91-4ab8-a4dd-a91e626d874a.europe-west3-0.gcp.cloud.qdrant.io:6333 --collection bge_base_en_v1.5_tacutu_papers_10 --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --model BAAI/bge-base-en-v1.5 --slice 100
+python indexpaper/index.py fast_index --url https://62d4a96e-2b91-4ab8-a4dd-a91e626d874a.europe-west3-0.gcp.cloud.qdrant.io:6333 --collection bge_base_en_v1.5_tacutu_papers_5 --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --paragraphs 5 --model BAAI/bge-base-en-v1.5 --slice 100 --batch_size 50 --parallel 10
 ```
 
 

@@ -29,7 +29,7 @@ def app(ctx: Context):
 @click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
 @click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.OpenAI.value,
               help='size of the chunk for splitting')
-@click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk for splitting (characters for recursive spliiter and tokens for openai one)')
+@click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk in tokens for splitting (characters for recursive spliiter and tokens for openai one)')
 @click.option("--model", type=click.Path(), default=None, help="path to the model (required for embeddings)")
 @click.option('--include_meta', type=click.BOOL, default=True, help="if metadata is included")
 @click.option('--database', type=click.Choice(VECTOR_DATABASES, case_sensitive=False), default=VectorDatabase.Chroma.value, help = "which store to take")
@@ -37,7 +37,7 @@ def app(ctx: Context):
 @click.option('--prefer_grpc', type=click.BOOL, default = None)
 @click.option('--rewrite', type=click.BOOL, default=False, help = "Rewrite collection if it is already present")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def index_papers_command(papers: str, collection: str, folder: str, url: str, key: str, embeddings: str, chunk_size: int, model: Optional[str], include_meta: bool, database: str, device: Optional[str], prefer_grpc: Optional[bool], rewrite: bool, log_level: str) -> Path:
+def index_papers_command(papers: str, collection: str, folder: str, url: str, key: str, embeddings: str, chunk_size: int,  model: Optional[str], include_meta: bool, database: str, device: Optional[str], prefer_grpc: Optional[bool], rewrite: bool, log_level: str) -> Path:
     configure_logger(log_level)
     load_environment_keys(usecwd=True)
     papers_folder = Path(papers)
@@ -63,23 +63,21 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
 @click.option('--prefer_grpc', type=click.BOOL, default=False, help = "only needed for qdrant database")
 @click.option('--start', type=click.INT, default=0, help='When to start slicing the dataset')
 @click.option('--content_field', type=click.STRING, default="annotations_paragraph", help = "default dataset content field")
+@click.option('--paragraphs', type=click.INT, default=5, help='number of paragraphs to connect together when preprocessing')
 @click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
-@click.option('--batch_size', type=click.INT, default=32, help="Batch size, 32 by default")
-#@click.option('--rewrite', type=click.BOOL, default=False, help = "Rewrite collection if it is already present")
+@click.option('--batch_size', type=click.INT, default=50, help="Batch size, 50 by default")
+@click.option('--parallel', type=click.INT, default=10, help="How many workers to use")
+@click.option('--rewrite', type=click.BOOL, default=False, help = "Rewrite collection if it is already present")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def fast_index_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], model: str, prefer_grpc: bool, start: int, content_field: str, slice: int, batch_size: int, log_level: str) -> Path:
+def fast_index_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], model: str, prefer_grpc: bool, start: int, content_field: str, paragraphs: int, slice: int, batch_size: int, parallel: Optional[int], rewrite: bool, log_level: str) -> Path:
     configure_logger(log_level)
     load_environment_keys(usecwd=True)
     assert not (url is None and key is None), "either database url or api_key should be provided!"
     chunk_size: int = 512
     logger.info(f"computing embeddings into collection {collection} for {dataset} with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
     splitter = HuggingFaceSplitter(model, tokens=chunk_size)
-    paper_set = Paperset(dataset, splitter=splitter, content_field=content_field)
+    paper_set = Paperset(dataset, splitter=splitter, content_field=content_field, paragraphs_together=paragraphs)
     api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
-    indexes: dict[str, PayloadSchemaType] = {
-        "doi": PayloadSchemaType.TEXT,
-        "source": PayloadSchemaType.TEXT
-    }
     is_url = "ttp:" in url or "ttps:" in url
     path: Optional[str] = None if is_url else url #actually the user can give either path or url
     url: Optional[str] = url if is_url else None
@@ -96,15 +94,18 @@ def fast_index_command(dataset: str, collection: str, url: Optional[str], key: O
     from qdrant_client.http import models as rest
     #client.recreate_collection(collection_name)
     # Just do a single quick embedding to get vector size
-    """
+    collections = client.get_collections()
     if rewrite or not seq(collections.collections).exists(lambda c: c.name == collection):
         logger.info(f"creating collection {collection}")
-        client.recreate_collection(collection_name=collection)
+        client.recreate_collection(collection_name=collection, vectors_config=client.get_fastembed_vector_params(on_disk=True))
+        indexes: dict[str, PayloadSchemaType] = {
+            "doi": PayloadSchemaType.TEXT,
+            "source": PayloadSchemaType.TEXT,
+            "document": PayloadSchemaType.TEXT
+        }
         for k, v in indexes.items():
             client.create_payload_index(collection, k, v)
-    collections = client.get_collections()
-    """
-    return paper_set.fast_index_by_slice(n = slice, client=client, collection_name=collection, batch_size=batch_size)
+    return paper_set.fast_index_by_slice(n = slice, client=client, collection_name=collection, batch_size=batch_size, parallel=parallel)
 
 @timing
 @app.command("dataset")
@@ -121,9 +122,10 @@ def fast_index_command(dataset: str, collection: str, url: Optional[str], key: O
 @click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
 @click.option('--start', type=click.INT, default=0, help='When to start slicing the dataset')
 @click.option('--content_field', type=click.STRING, default="annotations_paragraph", help = "default dataset content field")
+@click.option('--paragraphs', type=click.INT, default=5, help='number of paragraphs to connect together when preprocessing')
 @click.option('--rewrite', type=click.BOOL, default=False, help = "Rewrite collection if it is already present")
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def index_dataset_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], embeddings: str, chunk_size: int, model: Optional[str], device: Optional[str], prefer_grpc: bool, slice: int, start: int, content_field: str, rewrite: bool, log_level: str) -> Path:
+def index_dataset_command(dataset: str, collection: str, url: Optional[str], key: Optional[str], embeddings: str, chunk_size: int, model: Optional[str], device: Optional[str], prefer_grpc: bool, slice: int, start: int, content_field: str, paragraphs: int, rewrite: bool, log_level: str) -> Path:
     configure_logger(log_level)
     load_environment_keys(usecwd=True)
     assert not (url is None and key is None), "either database url or api_key should be provided!"
@@ -131,7 +133,7 @@ def index_dataset_command(dataset: str, collection: str, url: Optional[str], key
     logger.info(f"computing embeddings into collection {collection} for {dataset} of {embeddings} type with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
     embedding_function = resolve_embeddings(embedding_type, model = model, device = Device(device))
     splitter = resolve_splitter(embedding_type, model, chunk_size)
-    paper_set = Paperset(dataset, splitter=splitter, content_field=content_field)
+    paper_set = Paperset(dataset, splitter=splitter, content_field=content_field, paragraphs_together=paragraphs)
     api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
     indexes: dict[str, PayloadSchemaType] = {
         "doi": PayloadSchemaType.TEXT,
