@@ -7,8 +7,8 @@ from pycomfort.config import load_environment_keys, LOG_LEVELS, LogLevel, config
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import PayloadSchemaType
 
-from indexpaper.indexing import index_selected_papers, index_selected_documents, init_qdrant
-from indexpaper.paperset import Paperset
+from indexpaper.indexing import index_selected_papers, index_selected_documents, init_qdrant, fast_index_papers
+from indexpaper.paperset import Paperset, generate_id_from_data
 from indexpaper.resolvers import *
 from indexpaper.utils import timing
 
@@ -24,11 +24,10 @@ def app(ctx: Context):
 @app.command("index_papers")
 @click.option('--papers', type=click.Path(exists=True), help="papers folder to index")
 @click.option('--collection', default='papers', help='papers collection name')
-@click.option('--folder', type=click.Path(), default=None, help="folder to put chroma indexes to")
+@click.option('--folder', type=click.Path(), default=None, help="folder to put chroma indexes to (if we use chroma)")
 @click.option('--url', type=click.STRING, default=None, help="alternatively you can provide url, for example http://localhost:6333 for qdrant")
 @click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
-@click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.OpenAI.value,
-              help='size of the chunk for splitting')
+@click.option('--embeddings', type=click.Choice(EMBEDDINGS), default=EmbeddingType.OpenAI.value, help='size of the chunk for splitting')
 @click.option('--chunk_size', type=click.INT, default=3000, help='size of the chunk in tokens for splitting (characters for recursive spliiter and tokens for openai one)')
 @click.option("--model", type=click.Path(), default=None, help="path to the model (required for embeddings)")
 @click.option('--include_meta', type=click.BOOL, default=True, help="if metadata is included")
@@ -53,13 +52,29 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
                                  always_recreate=rewrite
                                  )
 
+
+@timing
+@app.command("fast_index_papers")
+@click.option('--papers', type=click.Path(exists=True), help="papers folder to index")
+@click.option('--collection', default='dataset', help='dataset collection name')
+@click.option('--url', type=click.STRING, required=True, help="URL or API key for example http://localhost:6333 for qdrant")
+@click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
+@click.option("--model", type=click.Path(), default=EmbeddingModels.default.value, help="fast embedding model, BAAI/bge-base-en-v1.5 by default")
+@click.option('--prefer_grpc', type=click.BOOL, default=True, help="only needed for qdrant database")
+@click.option('--rewrite', type=click.BOOL, default=False, help = "Rewrite collection if it is already present")
+@click.option('--paginated', type=click.BOOL, default=True, help = "If it is paginated paper")
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
+def fast_index_papers_command(papers: str, collection: str, url: Optional[str], key: Optional[str], model: str, prefer_grpc: bool, rewrite: bool, paginated: bool, log_level: str) -> Path:
+    configure_logger(log_level)
+    return fast_index_papers(Path(papers), collection, url, key, model, prefer_grpc, rewrite, paginated)
+
 @timing
 @app.command("fast_index")
 @click.option('--dataset', type=click.STRING, help="Dataset to index, can be either Path or hugging face dataset")
 @click.option('--collection', default='dataset', help='dataset collection name')
 @click.option('--url', type=click.STRING, required=True, help="URL or API key for example http://localhost:6333 for qdrant")
 @click.option('--key', type=click.STRING, default=None, help="your api key if you are using cloud vector store")
-@click.option("--model", type=click.Path(), default=EmbeddingModels.default.bge_base_en_1_5, help="fast embedding model, BAAI/bge-base-en-v1.5 by default")
+@click.option("--model", type=click.Path(), default=EmbeddingModels.default.value, help="fast embedding model, BAAI/bge-base-en-v1.5 by default")
 @click.option('--prefer_grpc', type=click.BOOL, default=False, help = "only needed for qdrant database")
 @click.option('--start', type=click.INT, default=0, help='When to start slicing the dataset')
 @click.option('--content_field', type=click.STRING, default="annotations_paragraph", help = "default dataset content field")

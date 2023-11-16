@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.0.13'
+VERSION = '0.0.15'
 DESCRIPTION = 'indexpaper - library to index papers with vector databases'
 LONG_DESCRIPTION = 'indexpaper - library to index papers with vector databases'
 
@@ -21,8 +21,8 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=['pyfunctional', 'pycomfort', 'more-itertools', 'click', 'python-dotenv', 'tiktoken',
-                      'langchain', 'openai', 'Deprecated', 'loguru', 'fastembed',
+    install_requires=['pycomfort>=0.0.14', 'pycomfort', 'more-itertools', 'click', 'python-dotenv', 'tiktoken',
+                      'langchain>=0.0.333', 'openai', 'Deprecated', 'loguru', 'fastembed>=0.1.0',
                       'qdrant-client', 'chromadb', 'sentence_transformers', 'datasets', 'polars', 'beartype'],
     keywords=['python', 'utils', 'files', 'papers', 'download', 'index', 'vector databases'],
     classifiers=[

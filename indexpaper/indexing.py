@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import hashlib
 import time
 from typing import Any
 
@@ -15,9 +16,19 @@ from langchain.embeddings import HuggingFaceBgeEmbeddings
 from langchain.embeddings.huggingface import *
 from qdrant_client.http.models import PayloadSchemaType
 from indexpaper.resolvers import *
-from indexpaper.splitting import SourceTextSplitter, papers_to_documents
+from indexpaper.splitting import SourceTextSplitter, papers_to_documents, paginated_paper_to_documents
 from indexpaper.utils import timing
 
+
+def generate_id_from_data(data):
+    """
+    function to avoid duplicates
+    :param data:
+    :return:
+    """
+    if isinstance(data, str):  # check if data is a string
+        data = data.encode('utf-8')  # encode the string into bytes
+    return str(hex(int.from_bytes(hashlib.sha256(data).digest()[:32], 'little')))[-32:]
 
 def db_with_texts(db: VectorStore, texts: list[str],
                   splitter: TextSplitter, id_field: Optional[str] = None, debug: bool = False):
@@ -249,3 +260,53 @@ def index_selected_papers(folder_or_texts: Union[Path, list[str]],
             where.mkdir(exist_ok=True, parents=True)
             logger.info(f"writing index of papers to {where}")
             return make_local_db(collection, documents, splitter, embeddings_function, persist_directory=where,  prefer_grpc = prefer_grpc, database=database, always_recreate = always_recreate)
+
+
+def fast_index_papers(folder: Path, collection: str, url: Optional[str], key: Optional[str], model: str = EmbeddingModels.default.value, prefer_grpc: bool = True, parallel: Optional[int] = None, rewrite: bool = False, paginated: bool = True) -> Path:
+    load_environment_keys(usecwd=True)
+    assert not (url is None and key is None), "either database url or api_key should be provided!"
+    chunk_size: int = 512
+    #logger.info(f"computing embeddings into collection {collection} for {dataset} with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
+    splitter = HuggingFaceSplitter(model, tokens=chunk_size)
+    api_key = os.getenv("QDRANT_KEY") if key == "QDRANT_KEY" or key == "key" else key
+    is_url = "ttp:" in url or "ttps:" in url
+    path: Optional[str] = None if is_url else url #actually the user can give either path or url
+    url: Optional[str] = url if is_url else None
+    logger.info(f"initializing quadrant database at {url}")
+    client: QdrantClient = QdrantClient(
+        url=url,
+        port=6333,
+        grpc_port=6334,
+        prefer_grpc=is_url if prefer_grpc is None else prefer_grpc,
+        api_key=api_key,
+        path=path
+    )
+    client.set_model(model)
+    collections = client.get_collections()
+    if rewrite or not seq(collections.collections).exists(lambda c: c.name == collection):
+        logger.info(f"creating collection {collection}")
+        client.recreate_collection(collection_name=collection, vectors_config=client.get_fastembed_vector_params(on_disk=True))
+        indexes: dict[str, PayloadSchemaType] = {
+            "doi": PayloadSchemaType.TEXT,
+            "source": PayloadSchemaType.TEXT,
+            "document": PayloadSchemaType.TEXT
+        }
+        for k, v in indexes.items():
+            client.create_payload_index(collection, k, v)
+    docs = paginated_paper_to_documents(folder) if paginated else papers_to_documents(folder)
+    texts = [d.page_content for d in docs]
+    for d in docs:
+        if "metadata" not in d.metadata: #ugly fix for metadata issue
+            d.metadata["metadata"] = d.metadata.copy()
+    metadatas = [d.metadata for d in docs]
+    ids = [generate_id_from_data(d.page_content) for d in docs]
+    client.add(
+        collection_name=collection,
+        documents=texts,
+        metadata=metadatas,
+        ids=ids,
+        parallel=parallel
+    )
+    logger.info(f"added {len(texts)} documents")
+    return client
+    #paper_set.fast_index_by_slice(n = slice, client=client, collection_name=collection, batch_size=batch_size, parallel=parallel)

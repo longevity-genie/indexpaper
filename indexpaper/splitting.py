@@ -42,6 +42,26 @@ def flatten_dict(d: Dict[str, Union[str, int, float, Dict, List]], parent_key: s
     return items  # Return the flattened dictionary
 
 
+def paginated_paper_to_documents(folder: Path) -> list[Document]:
+    metas: list[Path] = [folder] if "_meta.json" in folder.name else traverse(folder, lambda p: "_meta.json" in p.name)
+    docs = []
+    for meta in metas:
+        parent = meta.parent
+        json_data = meta.read_text("utf-8")
+        meta_dic = json.loads(json_data)
+        paper = parent / meta.name.replace("_meta.json", "")
+        if not paper.exists():
+            print(f"cannot find paper for {meta}")
+        else:
+            sorted_files = sorted(paper.glob("*.txt"), key=lambda x: int(x.stem.split('_')[-1]))
+            for i, text in enumerate(sorted_files):
+                doc = paper_to_document(text, meta_dic, extra={"page": i})
+                if doc is not None:
+                    docs.append(doc)
+    return docs
+
+
+
 def papers_to_documents(folder: Path, suffix: str = "", include_meta: bool = True):
     txt = traverse(folder, lambda p: "txt" in p.suffix)
     texts = [t for t in txt if suffix in t.name] if suffix != "" else txt
@@ -59,12 +79,13 @@ def papers_to_documents(folder: Path, suffix: str = "", include_meta: bool = Tru
     return docs
 
 
-def paper_to_document(paper: Path, meta: Optional[dict] = None, min_tokens: int = 100) -> Optional[Document]:
+def paper_to_document(paper: Path, meta: Optional[dict] = None, min_tokens: int = 100, extra: Optional[dict] = None) -> Optional[Document]:
     """
     Turns paper into document, assumes the folder/paper_name is DOI
     :param paper:
     :param meta: additional metadata
     :param min_tokens:
+    :param extra: optional extra fields to add
     :return: Documenty
     """
     doi = f"http://doi.org/{paper.parent.name}/{paper.stem}"
@@ -76,6 +97,9 @@ def paper_to_document(paper: Path, meta: Optional[dict] = None, min_tokens: int 
         new_meta = {} if meta is None else flatten_dict(meta)
         new_meta["source"] = doi
         new_meta["doi"] = doi
+        if extra is not None:
+            for k, v in extra.items():
+                new_meta[k] = v
         return Document(
             page_content=text,
             metadata=new_meta

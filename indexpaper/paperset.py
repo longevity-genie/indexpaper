@@ -29,6 +29,15 @@ DEFAULT_COLUMNS = ('corpusid',
                    )
 
 
+def generate_id_from_data(data):
+    """
+    function to avoid duplicates
+    :param data:
+    :return:
+    """
+    if isinstance(data, str):  # check if data is a string
+        data = data.encode('utf-8')  # encode the string into bytes
+    return str(hex(int.from_bytes(hashlib.sha256(data).digest()[:32], 'little')))[-32:]
 
 
 class Paperset:
@@ -193,15 +202,6 @@ class Paperset:
             return fun(self.documents_from_dataset_slice(df))
         return self.foreach_slice(n, fun_df, start)
 
-    def generate_id_from_data(self, data):
-        """
-        function to avoid duplicates
-        :param data:
-        :return:
-        """
-        if isinstance(data, str):  # check if data is a string
-            data = data.encode('utf-8')  # encode the string into bytes
-        return str(hex(int.from_bytes(hashlib.sha256(data).digest()[:32], 'little')))[-32:]
 
     @beartype
     def fast_index_by_slice(self, n: int, client: QdrantClient, collection_name: str, batch_size: int = 32, start: int = 0, parallel: Optional[int] = None):
@@ -215,7 +215,7 @@ class Paperset:
                 if "metadata" not in d.metadata: #ugly fix for metadata issue
                     d.metadata["metadata"] = d.metadata.copy()
             metadatas = [d.metadata for d in docs]
-            ids = [self.generate_id_from_data(d.page_content) for d in docs]
+            ids = [generate_id_from_data(d.page_content) for d in docs]
             client.add(
                 collection_name=collection_name,
                 documents=texts,
