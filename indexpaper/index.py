@@ -3,12 +3,13 @@ from typing import Dict
 
 import click
 from click import Context
+from hybrid_search.opensearch_hybrid_search import OpenSearchHybridSearch
 from pycomfort.config import load_environment_keys, LOG_LEVELS, LogLevel, configure_logger
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import PayloadSchemaType
 
 from indexpaper.indexing import index_selected_papers, index_selected_documents, init_qdrant, fast_index_papers
-from indexpaper.paperset import Paperset, generate_id_from_data
+from indexpaper.paperset import Paperset
 from indexpaper.resolvers import *
 from indexpaper.utils import timing
 
@@ -67,6 +68,40 @@ def index_papers_command(papers: str, collection: str, folder: str, url: str, ke
 def fast_index_papers_command(papers: str, collection: str, url: Optional[str], key: Optional[str], model: str, prefer_grpc: bool, rewrite: bool, paginated: bool, log_level: str) -> Path:
     configure_logger(log_level)
     return fast_index_papers(Path(papers), collection, url, key, model, prefer_grpc, rewrite, paginated)
+
+
+@timing
+@app.command("hybrid_index")
+@click.option('--dataset', type=click.STRING, help="Dataset to index, can be either Path or hugging face dataset")
+@click.option('--collection', required=True, help='dataset collection name')
+@click.option('--url', type=click.STRING, required=False, help="URL for opensearch, http://localhost:9200 by default for OpenSearch")
+@click.option("--model", type=click.Path(), default=EmbeddingModels.default.value, help="fast embedding model, BAAI/bge-base-en-v1.5 by default")
+@click.option("--device", type=click.Choice(DEVICES), default=Device.cpu.value, help="which device to use, cpu by default, so do not forget to put cuda if you are using NVIDIA")
+@click.option('--start', type=click.INT, default=0, help='When to start slicing the dataset')
+@click.option('--content_field', type=click.STRING, default="annotations_paragraph", help = "default dataset content field")
+@click.option('--paragraphs', type=click.INT, default=5, help='number of paragraphs to connect together when preprocessing')
+@click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
+def hybrid_index_command(dataset: str, collection: str, url: Optional[str], model: str, device: str, start: int, content_field: str, paragraphs: int, slice: int, log_level: str) -> Path:
+    logger = configure_logger(log_level)
+    load_environment_keys(usecwd=True)
+    logger.add("./logs/hybrid_index_{time}.log")
+    chunk_size: int = 512
+    logger.info(f"computing embeddings into collection {collection} for {dataset} with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
+    splitter = HuggingFaceSplitter(model, tokens=chunk_size)
+    paper_set = Paperset(dataset, splitter=splitter, content_field=content_field, paragraphs_together=paragraphs)
+    embeddings = resolve_embeddings(EmbeddingType.HuggingFaceBGE if "bge" in model else EmbeddingType.HuggingFace, model = model, device = Device(device))
+    logger.info(f"computing embeddings into collection {collection} for {dataset} with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
+    url = os.environ.get("OPENSEARCH_URL") if url is None else url
+    login = os.getenv("OPENSEARCH_USER", "admin")
+    password = os.getenv("OPENSEARCH_PASSWORD", "admin")
+    logger.info(f"initializing opensearch at {url}")
+    hybrid: OpenSearchHybridSearch = OpenSearchHybridSearch.create(url, collection, embeddings, login=login, password=password)
+    if not hybrid.check_pipeline_exists():
+        logger.info(f"hybrid search pipeline does not exist, creating it for {url}")
+        hybrid.create_pipeline(url)
+    result = paper_set.index_hybrid_by_slices(slice, hybrid, start, logger=logger)
+    return result
 
 @timing
 @app.command("fast_index")

@@ -36,7 +36,7 @@ To run local qdrant install docker compose (sometimes needs sudo) and run:
 cd services
 docker compose up
 ```
-Then you should be able to see  http://localhost:6333/dashboard
+Then you should be able to see  http://localhost:6333/dashboard for qdrant dashboard and http://0.0.0.0:5601 for OpenSearch dashboard
 
 # Additional requirements
 
@@ -77,6 +77,27 @@ Robi Tacutu papers QDRANT_KEY, cluster url (put yours) and  embeddings model:
 python indexpaper/index.py fast_index --url https://62d4a96e-2b91-4ab8-a4dd-a91e626d874a.europe-west3-0.gcp.cloud.qdrant.io:6333 --collection bge_base_en_v1.5_tacutu_papers_5 --dataset "longevity-genie/tacutu_papers" --key QDRANT_KEY --paragraphs 5 --model BAAI/bge-base-en-v1.5 --slice 100 --batch_size 50 --parallel 10
 ```
 
+# OpenSearch hybrid indexing
+
+For example indexing with bge
+```
+python indexpaper/index.py hybrid_index --collection bge_base_en_v1.5_tacutu_papers_2 --model "BAAI/bge-base-en-v1.5" --dataset "longevity-genie/tacutu_papers" --paragraphs 2
+```
+
+You can also make a test search:
+```
+python indexpaper/search.py hybrid --index "bge_base_en_v1.5_tacutu_papers_2" --model "BAAI/bge-base-en-v1.5" --query "mitochondrial GC content and longevity" --verbose True --k 3 --verbose True
+```
+
+Same for specter model:
+```
+python indexpaper/index.py hybrid_index --collection specter2_tacutu_papers_2 --model "allenai/specter2_base" --dataset "longevity-genie/tacutu_papers" --paragraphs 2
+```
+
+You can also make a test search:
+```
+python indexpaper/search.py hybrid --index "specter2_tacutu_papers_2" --model "allenai/specter2_base" --query "mitochondrial GC content and longevity" --k 3 --verbose true
+```
 
 # Indexing papers
 

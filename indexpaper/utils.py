@@ -13,7 +13,7 @@ def format_time(seconds: float) -> str:
     return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 
-def timing(custom_message:Optional[str] = None):
+def timing(custom_message: Optional[str] = None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):

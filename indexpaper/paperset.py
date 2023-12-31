@@ -3,9 +3,11 @@ import functools
 import hashlib
 from typing import TypeVar
 
+import loguru
 import polars as pl
 from beartype import beartype
 from datasets import load_dataset
+from hybrid_search.opensearch_hybrid_search import OpenSearchHybridSearch
 from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
 from langchain.vectorstores import VectorStore, Qdrant
@@ -29,21 +31,22 @@ DEFAULT_COLUMNS = ('corpusid',
                    )
 
 
-def generate_id_from_data(data):
-    """
-    function to avoid duplicates
-    :param data:
-    :return:
-    """
-    if isinstance(data, str):  # check if data is a string
-        data = data.encode('utf-8')  # encode the string into bytes
-    return str(hex(int.from_bytes(hashlib.sha256(data).digest()[:32], 'little')))[-32:]
-
 
 class Paperset:
     """
     The class that makes it easier to work with dataset or papers for indexing, can be either hugging face or parquet
     """
+
+    @staticmethod
+    def generate_id_from_data(data):
+        """
+        function to avoid duplicates
+        :param data:
+        :return:
+        """
+        if isinstance(data, str):  # check if data is a string
+            data = data.encode('utf-8')  # encode the string into bytes
+        return str(hex(int.from_bytes(hashlib.sha256(data).digest()[:32], 'little')))[-32:]
 
     @staticmethod
     @beartype
@@ -181,6 +184,21 @@ class Paperset:
         return self.fold_left_slices(n, fold_df, acc, start)
 
 
+    def foreach_numbered_slice(self, n: int, fun: Callable[[pl.DataFrame, int, int], None], start: int = 0) -> None:
+        # Get the slice
+        slice_lazy_df = self.lazy_frame.slice(start, n)
+
+        # Collect the slice to a DataFrame to check if it has zero rows
+        slice_df = slice_lazy_df.collect()
+        if slice_df.shape[0] == 0:
+            return
+
+        # Apply the function to the slice (in place modification)
+        fun(slice_df, n, start)
+
+        # Recursive call to process the next slice
+        self.foreach_numbered_slice(n, fun, start + n)
+
     def foreach_slice(self, n: int, fun: Callable[[pl.DataFrame], None], start: int = 0) -> None:
         # Get the slice
         slice_lazy_df = self.lazy_frame.slice(start, n)
@@ -202,6 +220,10 @@ class Paperset:
             return fun(self.documents_from_dataset_slice(df))
         return self.foreach_slice(n, fun_df, start)
 
+    def foreach_numbered_document_slice(self, n: int, fun: Callable[[list[Document], int, int], None], start: int = 0) -> None:
+        def fun_df(df: pl.DataFrame, f_n: int, f_start: int) -> None:
+            return fun(self.documents_from_dataset_slice(df), f_n, f_start)
+        return self.foreach_numbered_slice(n, fun_df, start)
 
     @beartype
     def fast_index_by_slice(self, n: int, client: QdrantClient, collection_name: str, batch_size: int = 32, start: int = 0, parallel: Optional[int] = None):
@@ -215,7 +237,7 @@ class Paperset:
                 if "metadata" not in d.metadata: #ugly fix for metadata issue
                     d.metadata["metadata"] = d.metadata.copy()
             metadatas = [d.metadata for d in docs]
-            ids = [generate_id_from_data(d.page_content) for d in docs]
+            ids = [self.generate_id_from_data(d.page_content) for d in docs]
             client.add(
                 collection_name=collection_name,
                 documents=texts,
@@ -227,18 +249,54 @@ class Paperset:
 
         return self.foreach_document_slice(n, fast_index_paper_slice, start = start)
 
+
+    def index_hybrid_by_slices(self, n: int, hybrid: OpenSearchHybridSearch, start: int = 0,
+                               pipeline_name: str = "norm-pipeline",
+                               logger: Optional["loguru.Logger"] = None):
+        if not hybrid.check_pipeline_exists(pipeline_name):
+            logger.warning(f"hybrid pipeline does not exist, creating pipeline")
+            hybrid.create_pipeline(hybrid.opensearch_url, hybrid.login, hybrid.password, pipeline_name)
+        log = loguru.Logger if logger is None else logger
+        @timing(f"one more slice of {n} papers has been indexed")
+        def index_paper_slice(docs: list[Document], f_n: int, f_start: int) -> None:
+            if len(docs) == 0:
+                log.info(f"no more documents to index!")
+                return None
+            else:
+                log.info(f"slice of {f_n} at {f_start} staring from {start}")
+            texts = [d.page_content for d in docs]
+            metadatas = [d.metadata for d in docs]
+            ids = [self.generate_id_from_data(d.page_content) for d in docs]
+            hybrid.add_texts(texts=texts, metadatas=metadatas, ids=ids)
+
+        return self.foreach_numbered_document_slice(n, index_paper_slice, start = start)
+
+    def index_hybrid_by_slices_detailed(self, n: int, index_name: str, embeddings: Embeddings,
+                                        url: str,
+                                        start: int = 0,
+                                        login: Optional[str] = None,
+                                        password: Optional[str] = None,
+                                        pipeline_name: str = "norm-pipeline",
+                                        logger: Optional["loguru.Logger"] = None):
+        login = os.getenv("OPENSEARCH_USER", "admin") if login is None else login
+        password = os.getenv("OPENSEARCH_PASSWORD", "admin") if password is None else password
+        hybrid: OpenSearchHybridSearch = OpenSearchHybridSearch.create(url, index_name, embeddings, login=login, password=password)
+        return self.index_hybrid_by_slices(n, hybrid, start, pipeline_name, logger)
+
     @beartype
-    def index_by_slices(self, n: int, db: VectorStore, start: int = 0):
+    def index_by_slices(self, n: int, db: VectorStore, start: int = 0, logger: Optional["loguru.Logger"] = None):
         """
         :param n: number of papers included in the slice
         :param db: vector store to store results
         :param start: start index
+        :param logger: logger to log data to
         :return:
         """
+        log = loguru.Logger if logger is None else logger
         @timing(f"one more slice of {n} papers has been indexed")
         def index_paper_slice(docs: list[Document]) -> None:
             if len(docs) == 0:
-                logger.info(f"no more documents to index!")
+                log.info(f"no more documents to index!")
                 return None
             texts = [d.page_content for d in docs]
             metadatas = [d.metadata for d in docs]
