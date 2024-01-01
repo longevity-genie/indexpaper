@@ -26,5 +26,4 @@ dependencies:
       - sentence_transformers
       - datasets
       - qdrant-client[fastembed]
-      - fastembed>=0.1.3
       - hybrid_search
