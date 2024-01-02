@@ -81,7 +81,11 @@ python indexpaper/index.py fast_index --url https://62d4a96e-2b91-4ab8-a4dd-a91e
 
 For example indexing with bge
 ```
-python indexpaper/index.py hybrid_index --collection bge_base_en_v1.5_tacutu_papers_2 --model "BAAI/bge-base-en-v1.5" --dataset "longevity-genie/tacutu_papers" --paragraphs 2
+python indexpaper/index.py hybrid_index --collection bge_base_en_v1.5_tacutu_papers --model "BAAI/bge-base-en-v1.5" --dataset "longevity-genie/tacutu_papers"
+```
+If you want to index it with gpu and at different host (for example pic) use:
+```
+python indexpaper/index.py hybrid_index --collection bge_base_en_v1.5_tacutu_papers --model "BAAI/bge-base-en-v1.5" --url "https://pic:9200" --dataset "longevity-genie/tacutu_papers" --device cuda
 ```
 
 You can also make a test search:
@@ -91,12 +95,12 @@ python indexpaper/search.py hybrid --index "bge_base_en_v1.5_tacutu_papers_2" --
 
 Same for specter model:
 ```
-python indexpaper/index.py hybrid_index --collection specter2_tacutu_papers_2 --model "allenai/specter2_base" --dataset "longevity-genie/tacutu_papers" --paragraphs 2
+python indexpaper/index.py hybrid_index --collection specter2_tacutu_papers --model "allenai/specter2_base" --dataset "longevity-genie/tacutu_papers"
 ```
 
 You can also make a test search:
 ```
-python indexpaper/search.py hybrid --index "specter2_tacutu_papers_2" --model "allenai/specter2_base" --query "mitochondrial GC content and longevity" --k 3 --verbose true
+python indexpaper/search.py hybrid --index "specter2_tacutu_papers" --model "allenai/specter2_base" --query "mitochondrial GC content and longevity" --k 3 --verbose true
 ```
 
 # Indexing papers

@@ -267,7 +267,7 @@ class Paperset:
             texts = [d.page_content for d in docs]
             metadatas = [d.metadata for d in docs]
             ids = [self.generate_id_from_data(d.page_content) for d in docs]
-            hybrid.add_texts(texts=texts, metadatas=metadatas, ids=ids)
+            hybrid.add_texts(texts=texts, metadatas=metadatas, ids=ids, bulk_size = 10000)
 
         return self.foreach_numbered_document_slice(n, index_paper_slice, start = start)
 
