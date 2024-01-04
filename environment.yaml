@@ -21,8 +21,8 @@ dependencies:
       - tiktoken
       - openai
       - chromadb>=0.4.15
-      - langchain>=0.0.336
-      - qdrant-client>=1.6.2
+      - langchain>=0.0.353
+      - qdrant-client>=1.7.0
       - sentence_transformers
       - datasets
       - qdrant-client[fastembed]
