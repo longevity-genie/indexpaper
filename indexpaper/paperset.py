@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import functools
 import hashlib
+import sys
 from typing import TypeVar
 
 import loguru
@@ -183,7 +184,6 @@ class Paperset:
             return fold(value, self.documents_from_dataset_slice(df))
         return self.fold_left_slices(n, fold_df, acc, start)
 
-
     def foreach_numbered_slice(self, n: int, fun: Callable[[pl.DataFrame, int, int], None], start: int = 0) -> None:
         # Get the slice
         slice_lazy_df = self.lazy_frame.slice(start, n)
@@ -215,10 +215,14 @@ class Paperset:
         self.foreach_slice(n, fun, start + n)
 
     #@beartype
+    @logger.catch(reraise=True)
     def foreach_document_slice(self, n: int, fun: Callable[[list[Document]], None], start: int = 0) -> None:
         def fun_df(df: pl.DataFrame) -> None:
             return fun(self.documents_from_dataset_slice(df))
-        return self.foreach_slice(n, fun_df, start)
+        sys.setrecursionlimit(100000) #to avoid issues
+        result = self.foreach_slice(n, fun_df, start)
+        sys.setrecursionlimit(5000) #putting back
+        return result
 
     def foreach_numbered_document_slice(self, n: int, fun: Callable[[list[Document], int, int], None], start: int = 0) -> None:
         def fun_df(df: pl.DataFrame, f_n: int, f_start: int) -> None:
@@ -252,11 +256,12 @@ class Paperset:
 
     def index_hybrid_by_slices(self, n: int, hybrid: OpenSearchHybridSearch, start: int = 0,
                                pipeline_name: str = "norm-pipeline",
-                               logger: Optional["loguru.Logger"] = None):
+                               logger: Optional["loguru.Logger"] = None, verbose: bool = False):
         if not hybrid.check_pipeline_exists(pipeline_name):
             logger.warning(f"hybrid pipeline does not exist, creating pipeline")
             hybrid.create_pipeline(hybrid.opensearch_url, hybrid.login, hybrid.password, pipeline_name)
         log = loguru.Logger if logger is None else logger
+        @log.catch(reraise=True)
         @timing(f"one more slice of {n} papers has been indexed")
         def index_paper_slice(docs: list[Document], f_n: int, f_start: int) -> None:
             if len(docs) == 0:
@@ -267,7 +272,7 @@ class Paperset:
             texts = [d.page_content for d in docs]
             metadatas = [d.metadata for d in docs]
             ids = [self.generate_id_from_data(d.page_content) for d in docs]
-            hybrid.add_texts(texts=texts, metadatas=metadatas, ids=ids, bulk_size = 10000)
+            hybrid.add_texts(texts=texts, metadatas=metadatas, ids=ids, bulk_size = 15000)
 
         return self.foreach_numbered_document_slice(n, index_paper_slice, start = start)
 
