@@ -8,12 +8,12 @@ channels:
 dependencies:
   - python=3.10
   - setuptools
-  - pytorch
+  - cudatoolkit=11.6
+  - pytorch<=1.13
+  - sentence-transformers
   - jupyter #for intellij jupyter only
   - jupyterlab #for examples only
-  - sentence-transformers
   - pip:
-      - pycomfort>=0.0.15
       - pynction
       - polars>=0.19.11
       - beartype

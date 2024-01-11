@@ -9,12 +9,11 @@ from beartype import beartype
 from click import Context
 from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
-from langchain.vectorstores import Chroma, VectorStore, Qdrant
+from langchain_community.vectorstores import Chroma, VectorStore, Qdrant
 from pycomfort.config import load_environment_keys
 from qdrant_client import QdrantClient
-from langchain.embeddings import HuggingFaceBgeEmbeddings
-from langchain.embeddings.huggingface import *
 from qdrant_client.http.models import PayloadSchemaType
+
 from indexpaper.resolvers import *
 from indexpaper.splitting import SourceTextSplitter, papers_to_documents, paginated_paper_to_documents
 from indexpaper.utils import timing

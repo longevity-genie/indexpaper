@@ -11,7 +11,7 @@ from datasets import load_dataset
 from hybrid_search.opensearch_hybrid_search import OpenSearchHybridSearch
 from langchain.schema import Document
 from langchain.text_splitter import TextSplitter
-from langchain.vectorstores import VectorStore, Qdrant
+from langchain_community.vectorstores import VectorStore, Qdrant
 from qdrant_client import QdrantClient
 
 from indexpaper.resolvers import *

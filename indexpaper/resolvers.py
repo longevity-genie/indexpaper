@@ -1,13 +1,13 @@
 import os
 from enum import Enum
 
-from langchain.embeddings import OpenAIEmbeddings, LlamaCppEmbeddings, VertexAIEmbeddings, HuggingFaceEmbeddings
-from langchain.embeddings.base import Embeddings
+from langchain_community.embeddings import OpenAIEmbeddings, LlamaCppEmbeddings, VertexAIEmbeddings
+from langchain_community.embeddings.huggingface import *
 from loguru import logger
 from pycomfort.files import *
-from langchain.embeddings import HuggingFaceBgeEmbeddings
-from langchain.embeddings.huggingface import *
+
 from indexpaper.splitting import OpenAISplitter, SourceTextSplitter, HuggingFaceSplitter
+
 
 class EmbeddingModels(Enum):
     all_mpnet_base: str = "sentence-transformers/all-mpnet-base-v2"

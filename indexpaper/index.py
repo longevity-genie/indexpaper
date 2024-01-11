@@ -12,6 +12,7 @@ from indexpaper.indexing import index_selected_papers, index_selected_documents,
 from indexpaper.paperset import Paperset
 from indexpaper.resolvers import *
 from indexpaper.utils import timing
+from opensearchpy import OpenSearch, exceptions
 
 @click.group(invoke_without_command=False)
 @click.pass_context

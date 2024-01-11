@@ -1,10 +1,9 @@
 from typing import Optional
 
 import click
-from langchain.embeddings import HuggingFaceBgeEmbeddings
-from langchain.schema import Document
-from hybrid_search.opensearch_hybrid_search import HYBRID_SEARCH, OpenSearchHybridSearch
 from hybrid_search.opensearch_hybrid_search import OpenSearchHybridSearch
+from langchain_community.embeddings import HuggingFaceBgeEmbeddings
+
 
 @click.group(invoke_without_command=True)
 @click.pass_context
