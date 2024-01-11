@@ -124,7 +124,7 @@ def write_remote_db(url: str,
                     database: VectorDatabase = VectorDatabase.Qdrant,
                     key: Optional[str] = None,
                     prefer_grpc: Optional[bool] = False,
-                    always_recreate: bool = False) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
+                    always_recreate: bool = False) -> (Union[VectorStore, Any, Chroma], Optional[Union[Path, str]], float):
     if database == VectorDatabase.Qdrant:
         logger.info(f"writing a collection {collection_name} of {len(documents)} documents to quadrant db at {url}")
         start_time = time.perf_counter()
