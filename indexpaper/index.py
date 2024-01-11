@@ -98,9 +98,9 @@ def hybrid_index_command(dataset: str, collection: str, url: Optional[str], mode
     password = os.getenv("OPENSEARCH_PASSWORD", "admin")
     logger.info(f"initializing opensearch at {url}")
     hybrid: OpenSearchHybridSearch = OpenSearchHybridSearch.create(url, collection, embeddings, login=login, password=password)
-    if not hybrid.check_pipeline_exists():
-        logger.info(f"hybrid search pipeline does not exist, creating it for {url}")
-        hybrid.create_pipeline(url)
+    #if not hybrid.check_pipeline_exists():
+    #    logger.info(f"hybrid search pipeline does not exist, creating it for {url}")
+    #    hybrid.create_pipeline(url)
     result = paper_set.index_hybrid_by_slices(slice, hybrid, start, logger=logger)
     return result
 
