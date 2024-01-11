@@ -149,7 +149,7 @@ def make_local_db(collection_name: str,
                   id_field: Optional[str] = None,
                   prefer_grpc: Optional[bool] = False,
                   always_recreate: bool = False
-                  ) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
+                  ) -> (Union[VectorStore, Any, Chroma], Optional[Union[Path, str]], float):
     """
     :param collection_name:
     :param documents:
@@ -220,7 +220,7 @@ def index_selected_documents(documents: list[Document],
                           model: Optional[Union[Path, str]] = None,
                           prefer_grpc: Optional[bool] = None,
                           device: Device = Device.cpu
-                          ) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
+                          ) -> (Union[VectorStore, Any, Chroma], Optional[Union[Path, str]], float):
     openai_key = load_environment_keys() #for openai key
     embeddings_function = resolve_embeddings(embedding_type, model, device)
     logger.info(f"embeddings are {embedding_type}")
@@ -241,7 +241,7 @@ def index_selected_papers(folder_or_texts: Union[Path, list[str]],
                           prefer_grpc: Optional[bool] = None,
                           always_recreate: bool = False,
                           device: Device = Device.cpu
-                          ) -> (Union[VectorStore, Any, langchain.vectorstores.Chroma], Optional[Union[Path, str]], float):
+                          ) -> (Union[VectorStore, Any, Chroma], Optional[Union[Path, str]], float):
     openai_key = load_environment_keys() #for openai key
     embeddings_function = resolve_embeddings(embedding_type, model, device)
     logger.info(f"embeddings are {embedding_type}")
