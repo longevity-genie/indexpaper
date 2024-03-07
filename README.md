@@ -121,6 +121,19 @@ indexpaper/index.py index_papers --papers data/output/test/papers --url http://l
 ```
 You can also take a look if things were added to the collection with qdrant web UI by checking http://localhost:6333/dashboard
 
+### Checking SemanticScholar dataset
+
+We provide some convenience methods to also run semantic-scholar datasets API.
+For example, if you want to get s2orc dataset you can run:
+```bash
+python indexpaper/check_scholar.py --key <your_semantic_schoalr_key> https://api.semanticscholar.org/datasets/v1/release/latest s2orc --output s2orc.json
+```
+
+If you need just the files you can do:
+```bash
+python indexpaper/check_scholar.py --key <your_semantic_schoalr_key> https://api.semanticscholar.org/datasets/v1/release/latest s2orc --output s2orc.json
+```
+
 ### Indexing with Llama-2 embeddings ###
 You can also use llama-2 embeddings if you install llama-cpp-python and pass a path to the model, for example for https://huggingface.co/TheBloke/Llama-2-13B-GGML model:
 ```

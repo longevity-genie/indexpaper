@@ -20,11 +20,9 @@ dependencies:
       - click
       - twine
       - tiktoken
-      - langchain>=0.1.0
-      - langchain-community>=0.0.11
       - openai
       - chromadb>=0.4.15
-      - qdrant-client>=1.7.0
+      - qdrant-client>=1.7.3
       - datasets
       - qdrant-client[fastembed]
-      - hybrid_search>=0.0.7
+      - hybrid_search>=0.0.9
