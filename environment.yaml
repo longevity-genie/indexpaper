@@ -11,18 +11,18 @@ dependencies:
   - pytorch
   - jupyter #for intellij jupyter only
   - jupyterlab #for examples only
-  - sentence-transformers
+  - sentence-transformers>=2.5.1
   - pip:
       - pycomfort>=0.0.15
       - pynction
-      - polars>=0.19.11
+      - polars>=0.20.14
       - beartype
       - click
       - twine
       - tiktoken
       - openai
       - chromadb>=0.4.15
-      - qdrant-client>=1.7.3
+      - qdrant-client>=1.8.0
       - datasets
-      - qdrant-client[fastembed]
+      - fastembed>=0.2.2
       - hybrid_search>=0.0.9
