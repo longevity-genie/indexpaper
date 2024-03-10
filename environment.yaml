@@ -21,7 +21,7 @@ dependencies:
       - twine
       - tiktoken
       - openai
-      - chromadb>=0.4.15
+      - chromadb>=0.4.24
       - qdrant-client>=1.8.0
       - datasets
       - fastembed>=0.2.2

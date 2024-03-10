@@ -21,9 +21,9 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=['pycomfort>=0.0.15', 'hybrid-search>=0.0.7', 'more-itertools', 'click', 'python-dotenv', 'tiktoken',
-                      'langchain>=0.1.0', "langchain-community>=0.0.11", 'openai', 'Deprecated', 'loguru', 'fastembed>=0.1.3',
-                      'qdrant-client>=1.7.0', 'chromadb', 'sentence_transformers', 'datasets', 'polars', 'beartype'],
+    install_requires=['pycomfort>=0.0.15', 'hybrid-search>=0.0.9', 'more-itertools', 'click', 'python-dotenv', 'tiktoken',
+                      'langchain>=0.1.11', "langchain-community>=0.0.27", 'openai', 'Deprecated', 'loguru', 'fastembed>=0.2.2',
+                      'qdrant-client>=1.8.0', 'sentence_transformers', 'datasets', 'polars>=0.20.14', 'beartype'],
     keywords=['python', 'utils', 'files', 'papers', 'download', 'index', 'vector databases'],
     classifiers=[
         "Development Status :: 2 - Pre-Alpha",
