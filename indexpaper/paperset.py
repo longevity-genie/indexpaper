@@ -21,7 +21,7 @@ T = TypeVar('T')
 
 DEFAULT_COLUMNS = ('corpusid',
                   'content_source_oainfo_openaccessurl',
-                  'updated',
+                  #'updated',
                   'externalids_doi',
                   'externalids_pubmed',
                   'annotations_abstract',
