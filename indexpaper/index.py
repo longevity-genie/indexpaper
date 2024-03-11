@@ -82,12 +82,12 @@ def fast_index_papers_command(papers: str, collection: str, url: Optional[str], 
 @click.option('--content_field', type=click.STRING, default="annotations_paragraph", help = "default dataset content field")
 @click.option('--paragraphs', type=click.INT, default=5, help='number of paragraphs to connect together when preprocessing')
 @click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
+@click.option('--chunk_size', type=click.INT, default=512, help='What is the size of the chunk')
 @click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
-def hybrid_index_command(dataset: str, collection: str, url: Optional[str], model: str, device: str, start: int, content_field: str, paragraphs: int, slice: int, log_level: str) -> Path:
+def hybrid_index_command(dataset: str, collection: str, url: Optional[str], model: str, device: str, start: int, content_field: str, paragraphs: int, slice: int, chunk_size: int, log_level: str) -> Path:
     logger = configure_logger(log_level)
     load_environment_keys(usecwd=True)
     logger.add("./logs/hybrid_index_{time}.log")
-    chunk_size: int = 512
     logger.info(f"computing embeddings into collection {collection} for {dataset} with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
     splitter = HuggingFaceSplitter(model, tokens=chunk_size)
     paper_set = Paperset(dataset, splitter=splitter, content_field=content_field, paragraphs_together=paragraphs)
