@@ -39,15 +39,14 @@ def download_directory(sftp: paramiko.SFTPClient, remote_dir: Path, local_dir: P
         remote_item_path = remote_dir / item.filename
         local_item_path = local_dir / item.filename
 
-        if local_item_path.exists():  # Skip downloading if file already exists
-            print(f"Skipping {remote_item_path} as it already exists in the local directory.")
-            continue
-
-        if stat.S_ISDIR(item.st_mode):  # If item is a directory
+        if stat.S_ISDIR(item.st_mode):  # If item is a directory, recurse into it
             download_directory(sftp, remote_item_path, local_item_path)
         else:
-            print(f"Downloading {remote_item_path} to {local_item_path}")
-            sftp.get(str(remote_item_path), str(local_item_path))
+            if not local_item_path.exists():  # Only download if the file doesn't exist
+                print(f"Downloading {remote_item_path} to {local_item_path}")
+                sftp.get(str(remote_item_path), str(local_item_path))
+            else:
+                print(f"Skipping {remote_item_path} as it already exists.")
 
 if __name__ == '__main__':
     main()
