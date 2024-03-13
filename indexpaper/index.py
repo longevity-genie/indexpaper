@@ -88,6 +88,11 @@ def hybrid_index_command(dataset: str, collection: str, url: Optional[str], mode
     logger = configure_logger(log_level)
     load_environment_keys(usecwd=True)
     logger.add("./logs/hybrid_index_{time}.log")
+    extras = {
+        "dataset": str(dataset),
+        "paragraphs_number": str(paragraphs),
+        "model": str(model)
+    }
     logger.info(f"computing embeddings into collection {collection} for {dataset} with model {model} using slices of {slice} starting from {start} with chunks of {chunk_size} tokens when splitting")
     splitter = HuggingFaceSplitter(model, tokens=chunk_size)
     paper_set = Paperset(dataset, splitter=splitter, content_field=content_field, paragraphs_together=paragraphs)
@@ -101,7 +106,7 @@ def hybrid_index_command(dataset: str, collection: str, url: Optional[str], mode
     #if not hybrid.check_pipeline_exists():
     #    logger.info(f"hybrid search pipeline does not exist, creating it for {url}")
     #    hybrid.create_pipeline(url)
-    result = paper_set.index_hybrid_by_slices(slice, hybrid, start, logger=logger)
+    result = paper_set.index_hybrid_by_slices(slice, hybrid, start, logger=logger, extras = extras)
     return result
 
 @timing

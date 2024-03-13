@@ -107,7 +107,7 @@ class Paperset:
         return documents if self.splitter is None else self.splitter.split_documents(documents)
 
     @beartype
-    def row_to_documents(self, row: tuple):
+    def row_to_documents(self, row: tuple, extras: Optional[Dict] = None):
         """
         Converts dataframe row into the text for indexing
         :param row:
@@ -120,6 +120,9 @@ class Paperset:
         data = d[self.content_field]
         contents = self.transform_content(data if type(data) is list else [data])
         meta = {k:v for k,v in d.items() if k != self.content_field}
+        # Check if extras is not None and update meta with extras
+        if extras is not None:
+            meta.update(extras)
         def with_index(meta: dict, i: int):
             meta["paragraph"] = i
             if "doi" in meta and meta["doi"] is not None:
@@ -138,13 +141,13 @@ class Paperset:
         return self.split_documents(docs)
 
     @beartype
-    def documents_from_dataset_slice(self, df: pl.DataFrame) -> list[Document]:
+    def documents_from_dataset_slice(self, df: pl.DataFrame, extras: Optional[Dict] = None) -> list[Document]:
         """
         turns slices of n papers into documents by calling row_to_documeents(r) on each paper
         :param df:
         :return:
         """
-        return seq(self.row_to_documents(r) for r in df.iter_rows()).flatten().to_list()
+        return seq(self.row_to_documents(r, extras) for r in df.iter_rows()).flatten().to_list()
 
 
     def fold_left_slices(self, n: int, fold: Callable[[T, pl.DataFrame], T], acc: T, start: int = 0) -> T:
@@ -224,9 +227,9 @@ class Paperset:
         sys.setrecursionlimit(5000) #putting back
         return result
 
-    def foreach_numbered_document_slice(self, n: int, fun: Callable[[list[Document], int, int], None], start: int = 0) -> None:
+    def foreach_numbered_document_slice(self, n: int, fun: Callable[[list[Document], int, int], None], start: int = 0, extras: Optional[Dict] = None) -> None:
         def fun_df(df: pl.DataFrame, f_n: int, f_start: int) -> None:
-            return fun(self.documents_from_dataset_slice(df), f_n, f_start)
+            return fun(self.documents_from_dataset_slice(df, extras), f_n, f_start)
         return self.foreach_numbered_slice(n, fun_df, start)
 
     @beartype
@@ -256,7 +259,9 @@ class Paperset:
 
     def index_hybrid_by_slices(self, n: int, hybrid: OpenSearchHybridSearch, start: int = 0,
                                pipeline_name: str = "norm-pipeline",
-                               logger: Optional["loguru.Logger"] = None, verbose: bool = False):
+                               logger: Optional["loguru.Logger"] = None,
+                               extras: Optional[Dict] = None,
+                               verbose: bool = False):
         if not hybrid.check_pipeline_exists(pipeline_name):
             logger.warning(f"hybrid pipeline does not exist, creating pipeline")
             hybrid.create_pipeline(hybrid.opensearch_url, hybrid.login, hybrid.password, pipeline_name)
@@ -271,10 +276,13 @@ class Paperset:
                 log.info(f"slice of {f_n} at {f_start} staring from {start}")
             texts = [d.page_content for d in docs]
             metadatas = [d.metadata for d in docs]
+            for m in metadatas:  #just technical to track slices
+                m["slice"] = f_start
+                m["slice_size"] = f_n
             ids = [self.generate_id_from_data(d.page_content) for d in docs]
             hybrid.add_texts(texts=texts, metadatas=metadatas, ids=ids, bulk_size = 15000)
 
-        return self.foreach_numbered_document_slice(n, index_paper_slice, start = start)
+        return self.foreach_numbered_document_slice(n, index_paper_slice, start = start, extras=extras)
 
     def index_hybrid_by_slices_detailed(self, n: int, index_name: str, embeddings: Embeddings,
                                         url: str,

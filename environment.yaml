@@ -25,4 +25,4 @@ dependencies:
       - qdrant-client>=1.8.0
       - datasets
       - fastembed>=0.2.2
-      - hybrid_search>=0.0.9
+      - hybrid_search>=0.0.10
