@@ -109,6 +109,36 @@ def hybrid_index_command(dataset: str, collection: str, url: Optional[str], mode
     result = paper_set.index_hybrid_by_slices(slice, hybrid, start, logger=logger, extras = extras)
     return result
 
+import click
+from typing import Optional, List
+
+# Assume all the necessary imports and existing command definitions are already in place
+
+@app.command("hybrid_index_multiple")
+@click.option('--datasets', multiple=True, type=click.Path(exists=True), help="Datasets to index, can be either Paths or hugging face datasets")
+@click.option('--collection', required=True, help='dataset collection name')
+@click.option('--url', type=click.STRING, required=False, help="URL for opensearch, http://localhost:9200 by default for OpenSearch")
+@click.option("--model", type=click.Path(), default=EmbeddingModels.default.value, help="fast embedding model, BAAI/bge-base-en-v1.5 by default")
+@click.option("--device", type=click.Choice(DEVICES), default=Device.cpu.value, help="which device to use, cpu by default, so do not forget to put cuda if you are using NVIDIA")
+@click.option('--content_field', type=click.STRING, default="annotations_paragraph", help = "default dataset content field")
+@click.option('--paragraphs', type=click.INT, default=5, help='number of paragraphs to connect together when preprocessing')
+@click.option('--slice', type=click.INT, default=100, help='What is the size of the slice')
+@click.option('--chunk_size', type=click.INT, default=512, help='What is the size of the chunk')
+@click.option('--log_level', type=click.Choice(LOG_LEVELS, case_sensitive=False), default=LogLevel.DEBUG.value, help="logging level")
+@click.pass_context
+def hybrid_index_multiple_command(ctx, datasets: List[str], collection: str, url: Optional[str], model: str, device: str, content_field: str, paragraphs: int, slice: int, chunk_size: int, log_level: str):
+    logger = configure_logger(log_level)
+    load_environment_keys(usecwd=True)
+    logger.add("./logs/hybrid_index_multiple_{time}.log")
+    for dataset in datasets:
+        try:
+            ctx.invoke(hybrid_index_command, dataset=dataset, collection=collection, url=url, model=model, device=device, start=0, content_field=content_field, paragraphs=paragraphs, slice=slice, chunk_size=chunk_size, log_level=log_level)
+            logger.info(f"Successfully processed dataset: {dataset}")
+        except Exception as e:
+            logger.error(f"Error processing dataset {dataset}: {e}")
+            # Continue to the next dataset without stopping the command execution
+
+
 @timing
 @app.command("fast_index")
 @click.option('--dataset', type=click.STRING, help="Dataset to index, can be either Path or hugging face dataset")
