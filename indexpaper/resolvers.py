@@ -25,8 +25,8 @@ class EmbeddingModels(Enum):
     bioelectra: str = 'menadsa/S-BioELECTRA'
     biolinkbert: str = "michiyasunaga/BioLinkBERT-large" #best on https://microsoft.github.io/BLURB/leaderboard.html
     specter: str = "allenai/specter2_base"
-    ada2: str = ""
-    default: str = bge_base_en_1_5
+    mxbai_large: str = "mxbai-embed-large-v1"
+    default: str = bge_large_en_1_5
 
 
 class Device(Enum):
@@ -50,6 +50,9 @@ class Device(Enum):
     hpu = "hpu"
     mtia = "mtia"
     privateuseone = "privateuseone"
+    cuda0 = "cuda:0"
+    cuda1 = "cuda:1"
+    cuda2 = "cuda:2"
 DEVICES =  [d.value for d in Device]
 
 

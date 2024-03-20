@@ -71,7 +71,7 @@ def fast_index_papers_command(papers: str, collection: str, url: Optional[str], 
     return fast_index_papers(Path(papers), collection, url, key, model, prefer_grpc, rewrite, paginated)
 
 
-@timing
+#@timing
 @app.command("hybrid_index")
 @click.option('--dataset', type=click.STRING, help="Dataset to index, can be either Path or hugging face dataset")
 @click.option('--collection', required=True, help='dataset collection name')
